@@ -476,17 +476,17 @@ class SyntheticDataGenerator:
                 if not agent_dec:
                     agent_dec = AgentDecision(
                         id=uuid.uuid4(),
-                        merchant_id=m.id,
                         opportunity_id=opp.id,
                         problem="Detected upstream gateway timeout on primary payment route.",
-                        evidence=opp.explanation or "Multiple timeout responses recorded during evening peak window.",
-                        financial_impact=opp.gross_value_affected,
+                        evidence_json={"evidence": opp.explanation or "Multiple timeout responses recorded during evening peak window."},
+                        estimated_impact=opp.gross_value_affected,
                         recovery_probability=opp.recovery_probability,
-                        recommended_action="Send 1-Click Recovery Payment Link",
+                        recommended_action="CREATE_PAYMENT_LINK",
                         reason="Customer has strong payment history; high probability of immediate recovery.",
                         risk_level="low",
-                        policy_result="AUTO_APPROVED",
                         expected_recovery=opp.expected_recovered_value,
+                        actual_recovery=opp.actual_recovered_value or Decimal("0.00"),
+                        currency="INR",
                         created_at=opp.created_at + timedelta(seconds=12)
                     )
                     db.add(agent_dec)

@@ -24,6 +24,10 @@ from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.providers import router as providers_router
 from app.api.v1.recovery import router as recovery_router
 from app.api.v1.audit import router as audit_router, serve_audit_ui
+from app.api.v1.analytics import router as analytics_router
+from pathlib import Path
+
+DASHBOARD_HTML_PATH = Path(__file__).resolve().parent / "static" / "dashboard.html"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("revenueos")
@@ -101,6 +105,17 @@ app.include_router(recovery_router, prefix=f"{settings.API_V1_STR}/recovery", ta
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit System"])
 app.include_router(audit_router, prefix=f"{settings.API_V1_STR}/audit", tags=["Audit System"])
 app.add_api_route("/audit", serve_audit_ui, methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
+
+def serve_dashboard():
+    if not DASHBOARD_HTML_PATH.exists():
+        return HTMLResponse("<h1>RevenueOS Dashboard Loading...</h1>", status_code=200)
+    with open(DASHBOARD_HTML_PATH, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read(), status_code=200)
+
+app.add_api_route("/", serve_dashboard, methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
+app.add_api_route("/dashboard", serve_dashboard, methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
+app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics & ROI"])
+app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["Analytics & ROI"])
 app.include_router(merchants_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Merchants"])
 app.include_router(transactions_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Transactions & Failures"])
 app.include_router(subscriptions_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Subscriptions"])
