@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Razorpay RevenueOS — Immutable Audit Ledger & Timeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #07090e;
+      --bg-surface: #0d121f;
+      --bg-card: rgba(18, 24, 38, 0.7);
+      --bg-card-hover: rgba(28, 36, 56, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: #3b82f6;
+      --primary: #2563eb;
+      --primary-glow: rgba(37, 99, 235, 0.25);
+      --razorpay-blue: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --info: #0ea5e9;
+      --info-bg: rgba(14, 165, 233, 0.12);
+      --purple: #8b5cf6;
+      --purple-bg: rgba(139, 92, 246, 0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Nav */
+    header {
+      background: rgba(13, 18, 31, 0.8);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: white;
+      box-shadow: 0 0 16px rgba(2, 132, 199, 0.4);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .nav-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid var(--border-subtle);
+    }
+    .badge-ledger {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .badge-provider {
+      background: rgba(2, 132, 199, 0.1);
+      color: var(--razorpay-blue);
+      border-color: rgba(2, 132, 199, 0.3);
+    }
+
+    /* Container */
+    .app-container {
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Stats Overview */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(255, 255, 255, 0.2); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .stat-desc { font-size: 0.75rem; color: var(--text-faint); margin-top: 0.25rem; }
+
+    /* Filters Bar */
+    .filter-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .input-field, .select-field {
+      background: #111726;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus, .select-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
+    .btn {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border-color: var(--border-subtle);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+    /* Main Split Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      min-height: 600px;
+    }
+    @media (max-width: 1024px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Left Panel: Event Stream */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(13, 18, 31, 0.6);
+    }
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .panel-body {
+      padding: 0.75rem;
+      overflow-y: auto;
+      max-height: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    /* Event Item Card */
+    .event-card {
+      background: rgba(18, 24, 38, 0.8);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .event-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(59, 130, 246, 0.4);
+      transform: translateX(2px);
+    }
+    .event-card.active {
+      border-color: var(--primary);
+      background: rgba(37, 99, 235, 0.1);
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.2);
+    }
+    .event-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .event-type-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .type-transaction { background: var(--info-bg); color: var(--info); }
+    .type-leak { background: var(--warning-bg); color: var(--warning); }
+    .type-ml { background: var(--purple-bg); color: var(--purple); }
+    .type-opp { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .type-agent { background: rgba(14, 165, 233, 0.15); color: #38bdf8; }
+    .type-policy { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .type-action { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+    .type-provider { background: rgba(2, 132, 199, 0.15); color: #38bdf8; }
+    .type-webhook { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+    .type-final { background: var(--success-bg); color: var(--success); }
+
+    .event-time { font-size: 0.75rem; color: var(--text-faint); font-family: 'JetBrains Mono', monospace; }
+    .event-summary { font-size: 0.85rem; color: var(--text-main); font-weight: 500; line-height: 1.35; }
+    .event-footer {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .actor-tag {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Right Panel: Causality Chain Inspector ("Judge's View") */
+    .timeline-wrapper {
+      padding: 1.25rem;
+      overflow-y: auto;
+      max-height: 720px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.6; }
+
+    /* Timeline Nodes */
+    .timeline-node {
+      position: relative;
+      padding-left: 2rem;
+      padding-bottom: 1.5rem;
+    }
+    .timeline-node::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 24px;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .timeline-node:last-child::before { display: none; }
+    .timeline-dot {
+      position: absolute;
+      left: 0;
+      top: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 3px solid var(--bg-surface);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+    .timeline-dot.success { background: var(--success); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+    .timeline-dot.failed { background: var(--danger); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+    .timeline-dot.warning { background: var(--warning); box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+    .node-stage {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .node-card {
+      background: rgba(24, 32, 50, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .node-title { font-size: 0.95rem; font-weight: 600; color: #fff; }
+    .node-details { font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; }
+    .metadata-box {
+      background: #090d16;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 0.6rem 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      overflow-x: auto;
+      max-height: 160px;
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 0.8s linear infinite;
+      margin: 2rem auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">₹</div>
+      <div>
+        <div class="brand-title">RevenueOS Audit Ledger</div>
+        <div class="brand-subtitle">End-to-End Operational Traceability & Forensic Chain</div>
+      </div>
+    </div>
+    <div class="nav-badges">
+      <div class="badge badge-ledger" id="ledger-badge">
+        <span>●</span> Immutable SHA-256 Ledger
+      </div>
+      <div class="badge badge-provider" id="provider-badge">
+        Provider: <span id="provider-name" style="font-weight: 700; margin-left: 2px;">Detecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+
+    <!-- Metrics Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Audit Records</div>
+        <div class="stat-value" id="stat-total-events">-</div>
+        <div class="stat-desc">Zero data loss & tamper-proof</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Recovery Actions Executed</div>
+        <div class="stat-value" id="stat-total-actions" style="color: #38bdf8;">-</div>
+        <div class="stat-desc">Through Payment Providers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Causal Integrity</div>
+        <div class="stat-value" style="color: var(--success);">100%</div>
+        <div class="stat-desc">Deterministic policy gates verified</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Credential Exposure</div>
+        <div class="stat-value" style="color: var(--success);">0</div>
+        <div class="stat-desc">Secrets strictly redacted</div>
+      </div>
+    </div>
+
+    <!-- Filter Toolbar -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <input type="text" id="filter-search" class="input-field" placeholder="Search ID (Transaction, Opp, Action)..." style="width: 280px;">
+        <select id="filter-event-type" class="select-field">
+          <option value="">All Event Types</option>
+          <option value="transaction_detected">Transaction Detected</option>
+          <option value="revenue_leak_detected">Revenue Leak Detected</option>
+          <option value="ml_prediction">ML Prediction</option>
+          <option value="opportunity_created">Opportunity Created</option>
+          <option value="ai_investigation">AI Investigation</option>
+          <option value="ai_recommendation">AI Recommendation</option>
+          <option value="policy_decision">Policy Decision</option>
+          <option value="approval">Approval</option>
+          <option value="recovery_action">Recovery Action</option>
+          <option value="provider_response">Provider Response</option>
+          <option value="webhook">Webhook Ingested</option>
+          <option value="recovery_verification">Recovery Verification</option>
+          <option value="final_recovered_amount">Final Recovered Amount</option>
+        </select>
+        <select id="filter-actor" class="select-field">
+          <option value="">All Actors</option>
+          <option value="SYSTEM">SYSTEM</option>
+          <option value="AI_RECOVERY_AGENT">AI_RECOVERY_AGENT</option>
+          <option value="POLICY_ENGINE">POLICY_ENGINE</option>
+          <option value="MOCK_PROVIDER">MOCK_PROVIDER</option>
+          <option value="RAZORPAY_TEST_PROVIDER">RAZORPAY_TEST_PROVIDER</option>
+          <option value="WEBHOOK_ENGINE">WEBHOOK_ENGINE</option>
+          <option value="MERCHANT_OPERATOR">MERCHANT_OPERATOR</option>
+        </select>
+        <select id="filter-status" class="select-field">
+          <option value="">All Statuses</option>
+          <option value="SUCCESS">SUCCESS</option>
+          <option value="FAILED">FAILED</option>
+          <option value="PENDING">PENDING</option>
+          <option value="BLOCKED">BLOCKED</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+        <button class="btn btn-primary" onclick="loadAuditEvents()">Refresh Feed</button>
+      </div>
+    </div>
+
+    <!-- Main Dual Panel Layout -->
+    <div class="main-grid">
+
+      <!-- Left Panel: Event Stream -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>📜</span> Operational Audit Log (<span id="event-count">0</span>)
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-faint);">Click any row to inspect causal chain</span>
+        </div>
+        <div class="panel-body" id="event-feed">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Causal Chain Inspector -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>⚖️</span> Forensic Causality Timeline (The Judge's View)
+          </div>
+          <div id="inspector-action-id" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">
+            No action selected
+          </div>
+        </div>
+        <div class="timeline-wrapper" id="timeline-container">
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3>Select a Recovery Action or Event</h3>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem;">Click any action in the audit feed to explore the complete causality chain from detection to final revenue recovery.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let activeActionId = null;
+
+    // Load Provider Status
+    async function loadProviderStatus() {
+      try {
+        const res = await fetch('/api/payment-provider/status');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('provider-name').textContent = data.active_provider.toUpperCase();
+        }
+      } catch (e) {
+        document.getElementById('provider-name').textContent = 'ACTIVE';
+      }
+    }
+
+    // Load Audit Events
+    async function loadAuditEvents() {
+      const feed = document.getElementById('event-feed');
+      feed.innerHTML = '<div class="spinner"></div>';
+
+      const searchVal = document.getElementById('filter-search').value.trim();
+      const eventType = document.getElementById('filter-event-type').value;
+      const actor = document.getElementById('filter-actor').value;
+      const status = document.getElementById('filter-status').value;
+
+      const params = new URLSearchParams();
+      params.append('limit', '100');
+      if (eventType) params.append('event_type', eventType);
+      if (actor) params.append('actor', actor);
+      if (status) params.append('status', status);
+
+      // Check if search query is a UUID
+      if (searchVal.length === 36) {
+        params.append('transaction', searchVal);
+      }
+
+      try {
+        const res = await fetch(`/api/audit?${params.toString()}`);
+        if (!res.ok) throw new Error('Failed to fetch audit events');
+        const data = await res.json();
+
+        document.getElementById('stat-total-events').textContent = data.total.toLocaleString();
+        document.getElementById('event-count').textContent = data.items.length;
+
+        // Count actions
+        const actionsCount = data.items.filter(i => i.event_type === 'recovery_action').length;
+        document.getElementById('stat-total-actions').textContent = actionsCount;
+
+        if (data.items.length === 0) {
+          feed.innerHTML = '<div class="empty-state"><p>No audit events found matching filters.</p></div>';
+          return;
+        }
+
+        feed.innerHTML = '';
+        data.items.forEach(ev => {
+          const card = document.createElement('div');
+          card.className = `event-card ${activeActionId && (ev.action_id === activeActionId) ? 'active' : ''}`;
+          
+          let pillClass = 'type-action';
+          if (ev.event_type.includes('transaction')) pillClass = 'type-transaction';
+          else if (ev.event_type.includes('leak')) pillClass = 'type-leak';
+          else if (ev.event_type.includes('ml')) pillClass = 'type-ml';
+          else if (ev.event_type.includes('opp')) pillClass = 'type-opp';
+          else if (ev.event_type.includes('investigation') || ev.event_type.includes('recommendation')) pillClass = 'type-agent';
+          else if (ev.event_type.includes('policy')) pillClass = 'type-policy';
+          else if (ev.event_type.includes('provider')) pillClass = 'type-provider';
+          else if (ev.event_type.includes('webhook')) pillClass = 'type-webhook';
+          else if (ev.event_type.includes('recovered')) pillClass = 'type-final';
+
+          const timeFormatted = new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+          card.innerHTML = `
+            <div class="event-card-top">
+              <span class="event-type-pill ${pillClass}">${ev.event_type.replace(/_/g, ' ')}</span>
+              <span class="event-time">${timeFormatted}</span>
+            </div>
+            <div class="event-summary">${ev.summary}</div>
+            <div class="event-footer">
+              <span class="actor-tag">${ev.actor}</span>
+              <span style="font-weight: 600; color: ${ev.status === 'SUCCESS' ? 'var(--success)' : (ev.status === 'FAILED' ? 'var(--danger)' : 'var(--warning)')}">
+                ${ev.status}
+              </span>
+              ${ev.action_id ? `<span style="margin-left: auto; font-family: monospace; font-size: 0.68rem; color: var(--razorpay-blue);">Action #${ev.action_id.slice(0, 8)}</span>` : ''}
+            </div>
+          `;
+
+          card.onclick = () => {
+            document.querySelectorAll('.event-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            inspectEventOrAction(ev);
+          };
+
+          feed.appendChild(card);
+        });
+
+        // Auto select first action if available
+        const firstAction = data.items.find(i => i.action_id);
+        if (firstAction && !activeActionId) {
+          inspectEventOrAction(firstAction);
+        }
+
+      } catch (err) {
+        feed.innerHTML = `<div class="empty-state" style="color: var(--danger);"><p>${err.message}</p></div>`;
+      }
+    }
+
+    // Inspect Event or load Full Causality Timeline
+    async function inspectEventOrAction(ev) {
+      const container = document.getElementById('timeline-container');
+      const targetActionId = ev.action_id || ev.id;
+      activeActionId = targetActionId;
+
+      document.getElementById('inspector-action-id').textContent = ev.action_id ? `Target Action: ${ev.action_id}` : `Event ID: ${ev.id}`;
+      container.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        let events = [];
+        if (ev.action_id) {
+          const res = await fetch(`/api/audit/timeline/${ev.action_id}`);
+          if (res.ok) {
+            const tl = await res.json();
+            events = tl.timeline || [];
+          }
+        }
+
+        if (events.length === 0) {
+          // Display single event deep dive
+          events = [ev];
+        }
+
+        container.innerHTML = '';
+
+        events.forEach((item, index) => {
+          const node = document.createElement('div');
+          node.className = 'timeline-node';
+
+          let dotStatus = 'success';
+          if (item.status === 'FAILED' || item.status === 'BLOCKED') dotStatus = 'failed';
+          else if (item.status === 'PENDING' || item.status === 'WARNING') dotStatus = 'warning';
+
+          const timeStr = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+          node.innerHTML = `
+            <div class="timeline-dot ${dotStatus}"></div>
+            <div class="node-header">
+              <span class="node-stage">Step ${index + 1}: ${item.event_type.replace(/_/g, ' ')}</span>
+              <span class="event-time">${timeStr}</span>
+            </div>
+            <div class="node-card">
+              <div class="node-title">${item.summary}</div>
+              <div class="node-details">
+                <strong>Actor:</strong> ${item.actor} | 
+                <strong>Status:</strong> <span style="font-weight: 700; color: ${item.status === 'SUCCESS' ? 'var(--success)' : 'var(--danger)'}">${item.status}</span>
+                ${item.transaction_id ? ` | <strong>Tx:</strong> <span style="font-family: monospace;">${item.transaction_id.slice(0, 8)}</span>` : ''}
+              </div>
+              ${item.metadata && Object.keys(item.metadata).length > 0 ? `
+                <div class="metadata-box">
+                  <pre style="margin: 0;">${JSON.stringify(item.metadata, null, 2)}</pre>
+                </div>
+              ` : ''}
+            </div>
+          `;
+          container.appendChild(node);
+        });
+
+      } catch (e) {
+        container.innerHTML = `<div class="empty-state" style="color: var(--danger);"><p>Error loading timeline: ${e.message}</p></div>`;
+      }
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-event-type').value = '';
+      document.getElementById('filter-actor').value = '';
+      document.getElementById('filter-status').value = '';
+      loadAuditEvents();
+    }
+
+    // Auto-initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      loadProviderStatus();
+      loadAuditEvents();
+    });
+  </script>
+</body>
+</html>

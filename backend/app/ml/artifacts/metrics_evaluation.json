@@ -1,0 +1,53 @@
+{
+  "training_timestamp": "2026-09-05T09:22:37.982189+00:00",
+  "train_samples": 84,
+  "test_samples": 28,
+  "baseline_model": {
+    "name": "LogisticRegression_Baseline",
+    "metrics": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "roc_auc": 1.0,
+      "confusion_matrix": [
+        [
+          25,
+          0
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 28
+    }
+  },
+  "improved_model": {
+    "name": "HistGradientBoosting_Production",
+    "metrics": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "roc_auc": 1.0,
+      "confusion_matrix": [
+        [
+          25,
+          0
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 28
+    }
+  },
+  "comparison": {
+    "roc_auc_delta": 0.0,
+    "f1_delta": 0.0,
+    "precision_delta": 0.0,
+    "recall_delta": 0.0
+  }
+}
