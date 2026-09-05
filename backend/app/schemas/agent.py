@@ -30,6 +30,8 @@ class AgentInvestigationResponse(BaseModel):
     execution_logs: List[AgentLogEntry] = Field(default_factory=list, description="Audit trace of tools called")
     policy_decision: Optional[Dict[str, Any]] = Field(default=None, description="Detailed policy decision payload")
     pipeline: Optional[Dict[str, Any]] = Field(default=None, description="4-step UI pipeline: AI Recommendation -> Policy Decision -> Approval Gate -> Execution")
+    causal_trace_id: Optional[str] = Field(default=None, description="Unique end-to-end causal trace identifier")
+    agent_run_id: Optional[uuid.UUID] = Field(default=None, description="Unique agent run identifier")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(from_attributes=True)
@@ -56,3 +58,31 @@ class AgentDecisionResponse(BaseModel):
 class AgentDecisionsListResponse(BaseModel):
     total: int
     items: List[AgentDecisionResponse]
+
+
+class AgentRunResponse(BaseModel):
+    id: uuid.UUID
+    agent_run_id: uuid.UUID
+    merchant_id: uuid.UUID
+    trigger: str
+    trigger_id: Optional[str] = None
+    current_state: str
+    status: str
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    failure_reason: Optional[str] = None
+    model_version: str
+    causal_trace_id: str
+    problem: Optional[str] = None
+    diagnosis: Optional[str] = None
+    recommended_action: Optional[str] = None
+    policy_verdict: Optional[str] = None
+    decision_summary: Dict[str, Any] = Field(default_factory=dict)
+    execution_logs_json: List[Dict[str, Any]] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AgentRunsListResponse(BaseModel):
+    total: int
+    items: List[AgentRunResponse]

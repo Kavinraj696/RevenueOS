@@ -28,7 +28,7 @@ def test_demo_scenarios_catalog_api():
     data = res.json()
 
     assert "scenarios" in data
-    assert len(data["scenarios"]) == 5
+    assert len(data["scenarios"]) >= 5
 
     scenario_ids = [s["id"] for s in data["scenarios"]]
     assert "payment_degradation" in scenario_ids

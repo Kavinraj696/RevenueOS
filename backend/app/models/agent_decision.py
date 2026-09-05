@@ -20,7 +20,7 @@ class AgentDecision(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     evidence_json: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     estimated_impact: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     recovery_probability: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
-    recommended_action: Mapped[str] = mapped_column(String(30), nullable=False)
+    recommended_action: Mapped[str] = mapped_column(String(255), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     risk_level: Mapped[str] = mapped_column(String(20), default="low", nullable=False)
     expected_recovery: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)

@@ -93,3 +93,6 @@ class PolicyDecisionResponse(BaseModel):
     limits: Dict[str, Any]
     timestamp: datetime
     pipeline: PolicyPipelineUI
+    policy_version: str = "policy_v1"
+    rules_evaluated: List[str] = Field(default_factory=list)
+    decision: str = "ALLOW"

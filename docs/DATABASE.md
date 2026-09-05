@@ -77,6 +77,9 @@ erDiagram
         string bank
         string device_type
         string route
+        string provider_payment_id
+        string provider_order_id
+        string reconciliation_status
         datetime created_at
     }
 
@@ -278,9 +281,9 @@ erDiagram
 
 ### 3.3 `Payment` (`payment.py`)
 * **Purpose:** Represents a payment transaction attempt lifecycle.
-* **Fields:** `id` (UUID PK), `merchant_id` (UUID FK), `customer_id` (UUID FK), `amount` (Numeric 14,2), `currency` (String 3, 'INR'), `status` (Enum: pending/success/failed/recovered), `payment_method` (String 30), `bank` (String 30, nullable), `device_type` (String 30), `route` (String 50), `created_at` (Timestamp).
+* **Fields:** `id` (UUID PK), `merchant_id` (UUID FK), `customer_id` (UUID FK), `amount` (Numeric 14,2), `currency` (String 3, 'INR'), `status` (Enum: pending/success/failed/recovered), `payment_method` (String 30), `bank` (String 30, nullable), `device_type` (String 30), `route` (String 50), `provider_payment_id` (String 100, nullable), `provider_order_id` (String 100, nullable), `reconciliation_status` (String 30, default 'UNRECONCILED', indexed), `created_at` (Timestamp).
 * **Relationships:** Has many `payment_attempts`.
-* **Indexes:** `ix_payments_merchant_status`, `ix_payments_merchant_created_at`.
+* **Indexes:** `ix_payments_merchant_status`, `ix_payments_merchant_created_at`, `ix_payments_reconciliation_status`.
 
 ### 3.4 `PaymentAttempt` (`payment_attempt.py`)
 * **Purpose:** Granular log of each routing/gateway attempt for a payment.
@@ -320,15 +323,15 @@ erDiagram
 
 ### 3.12 `RecoveryAction` (`recovery_action.py`)
 * **Purpose:** Concrete execution record of an authorized recovery procedure.
-* **Fields:** `id` (UUID PK), `opportunity_id` (UUID FK), `policy_decision_id` (UUID FK, nullable), `action_type` (Enum), `amount` (Numeric 14,2), `currency` (String 3), `status` (Enum: proposed/approved/executing/success/failed/blocked), `reason` (Text), `predicted_outcome` (String 255), `execution_result` (JSON), `created_at`, `executed_at`.
+* **Fields:** `id` (UUID PK), `opportunity_id` (UUID FK), `policy_decision_id` (UUID FK, nullable), `action_type` (Enum), `amount` (Numeric 14,2), `currency` (String 3), `status` (Enum: proposed/approved/executing/success/failed/blocked/verified), `reason` (Text), `predicted_outcome` (String 255), `idempotency_key` (String 100, unique index), `causal_trace_id` (String 100, indexed), `verified_status` (String 30), `verified_at` (Timestamp), `actual_recovered_amount` (Numeric 14,2), `execution_result` (JSON), `created_at`, `executed_at`.
 
 ### 3.13 `AuditEvent` (`audit_event.py`)
 * **Purpose:** Append-only immutable causality log of every critical system transition.
 * **Fields:** `id` (UUID PK), `merchant_id` (UUID FK), `actor` (String 50), `event_type` (String 50), `related_entity_type` (String 50), `related_entity_id` (UUID), `transaction_id` (UUID, nullable), `opportunity_id` (UUID, nullable), `action_id` (UUID, nullable), `agent_decision_id` (UUID, nullable), `policy_decision_id` (UUID, nullable), `status` (String 20), `summary` (Text), `message` (Text), `metadata_json` (JSON), `request_id` (String 100), `created_at`.
 
 ### 3.14 `WebhookEvent` (`webhook_event.py`)
-* **Purpose:** Inbound webhook receipt and idempotency record.
-* **Fields:** `id` (UUID PK), `provider` (String 30), `event_id` (String 100, unique constraint), `event_type` (String 100), `raw_payload_json` (JSON), `signature_verified` (Boolean), `processed` (Boolean), `received_at`, `processed_at`.
+* **Purpose:** Inbound webhook receipt, payload hashing, and idempotency record.
+* **Fields:** `id` (UUID PK), `merchant_id` (UUID FK, nullable), `provider` (String 30), `event_id` (String 100, unique constraint), `event_type` (String 100), `raw_payload_json` (JSON), `signature_verified` (Boolean), `processing_status` (String 30, default 'RECEIVED', indexed), `payload_hash` (String 64, indexed), `processing_error` (String 500, nullable), `processed` (Boolean), `received_at`, `processed_at`.
 
 ### 3.15 `Experiment` (`experiment.py`)
 * **Purpose:** Records A/B test simulations and recovery scenarios.
@@ -345,8 +348,29 @@ erDiagram
 | Schema Component | Status | Location / Notes |
 |---|---|---|
 | **Core Relational Schema (16 Entities)** | ✅ IMPLEMENTED | All 16 models in `backend/app/models/` with foreign keys, mixins, and indices. |
+| **Synthetic Commerce Data & Validation** | ✅ IMPLEMENTED | Stage 2 deterministic generator, 10-point dataset integrity checker, and ground truth registry. |
 | **Idempotency Deduplication Key** | ✅ IMPLEMENTED | Unique index on `webhook_events.event_id` preventing duplicate webhook mutations. |
 | **Immutable Audit Logging** | ✅ IMPLEMENTED | Write-only `audit_events` with full relational causality pointers. |
 | **Paise & Monetary Quantization** | ✅ IMPLEMENTED | `NUMERIC(14,2)` precision applied to all financial values. |
+| **Stage 8 Verified Recovery Attributions** | ✅ IMPLEMENTED | `RecoveryAction.actual_recovered_amount` and `verified_status` authoritative ledger. |
 | **PostgreSQL Partitioning** | 🔵 PLANNED | Monthly range-partitioning on `payments` and `audit_events` tables for high-volume enterprise throughput. |
 | **Distributed Cache / Read Replicas** | 🔵 PLANNED | Redis caching layer for merchant overview KPI aggregations. |
+
+---
+
+## 5. Stage 8 Financial Truth & Database Invariants
+
+RevenueOS enforces three hard database invariants across all financial reporting queries:
+
+1. **Strict Single Source of Truth**:
+   The authoritative value of Actual Recovered Revenue across all API endpoints (`/analytics/business-metrics`, `/analytics/roi`, `/analytics/funnel`, `/analytics/business-report`) and UI components is defined strictly as:
+   $$R_{act} = \sum_{a \in \mathcal{A}} a.\text{actual\_recovered\_amount}$$
+   where:
+   $$a.\text{verified\_status} \in \{\text{'confirmed'}, \text{'VERIFIED\_RECOVERED'}\} \quad \text{AND} \quad a.\text{status} \in \{\text{'SUCCESS'}, \text{'VERIFIED'}\}$$
+
+2. **Zero Speculative Revenue Booking**:
+   `RecoveryOpportunity.expected_recovered_value` is strictly an operational sorting and triage metric ($EV = V_{pot} \times P_{rec}$). Under no circumstances is $EV$ or any unverified opportunity value booked as realized recovered revenue in financial ledgers.
+
+3. **Settlement Discrepancy Isolation**:
+   When provider settlement reports an amount mismatch against expected transaction value (e.g. ₹3,000 settled vs ₹5,000 expected), the `PaymentReconciliationService` marks the transaction `RECONCILIATION_REQUIRED`, sets `verified = false`, and refuses to credit `actual_recovered_amount` until manual operator intervention.
+

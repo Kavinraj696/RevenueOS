@@ -159,6 +159,42 @@ This document details all API endpoints that **actually exist** in the RevenueOS
 * **Response (200 OK):** `RevenueLeakResponse`
 * **Errors:** `404 Not Found` if leak does not exist.
 
+### 4.3 Trigger Revenue Leak Detection
+* **Method:** `POST`
+* **Path:** `/api/v1/revenue-leaks/detect` (also `/api/revenue-leaks/detect`)
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Triggers the deterministic Stage 3 Revenue Leak Detection Engine across transaction streams for a specified merchant and analysis/baseline window.
+* **Request:** `LeakDetectionRequest`
+  ```json
+  {
+    "merchant_id": "11111111-1111-1111-1111-111111111111",
+    "analysis_window_days": 14,
+    "analysis_window_start": "2026-08-18T00:00:00Z",
+    "analysis_window_end": "2026-09-01T12:00:00Z",
+    "baseline_window_start": "2026-07-21T00:00:00Z",
+    "baseline_window_end": "2026-08-18T00:00:00Z"
+  }
+  ```
+* **Response (200 OK):** `LeakDetectionSummaryResponse`
+  ```json
+  {
+    "status": "success",
+    "merchant_id": "11111111-1111-1111-1111-111111111111",
+    "detected_leaks_count": 2,
+    "total_revenue_at_risk": 128450.00,
+    "analysis_window": {
+      "start": "2026-08-18T00:00:00Z",
+      "end": "2026-09-01T12:00:00Z"
+    },
+    "baseline_window": {
+      "start": "2026-07-21T00:00:00Z",
+      "end": "2026-08-18T00:00:00Z"
+    },
+    "leaks": []
+  }
+  ```
+* **Errors:** `404 Not Found` if merchant does not exist; `422 Unprocessable Entity` for invalid datetime or request formats.
+
 ---
 
 ## 5. Recovery Opportunities (Priority Queue)
@@ -416,10 +452,297 @@ This document details all API endpoints that **actually exist** in the RevenueOS
 
 ---
 
-## 16. Planned APIs (🔵 PLANNED)
+---
+
+## 16. AI Recovery Agent & Action Execution (Stage 5)
+
+### 16.1 Start Agent Run
+* **Method:** `POST`
+* **Path:** `/api/agent/runs` and `/api/v1/agent/runs`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Triggers the 9-stage AI Recovery Agent workflow (`OBSERVE` $\rightarrow$ `REPORT`) for a specific merchant and leak or opportunity.
+* **Request:**
+  ```json
+  {
+    "merchant_id": "11111111-1111-1111-1111-111111111111",
+    "trigger": "revenue_leak_detected",
+    "leak_id": "99999999-9999-9999-9999-999999999999"
+  }
+  ```
+* **Response (200 OK):** `AgentRunResponse` containing `agent_run_id`, `merchant_id`, `current_state`, `status`, `causal_trace_id`, `diagnostics`, `recommendation`, and `policy_verdict`.
+
+### 16.2 Get Agent Run Details
+* **Method:** `GET`
+* **Path:** `/api/agent/runs/{id}` and `/api/v1/agent/runs/{id}`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Inspects real-time state, execution log, and structured reasoning summary for an agent run.
+* **Response (200 OK):** `AgentRunResponse`
+
+### 16.3 List Agent Runs
+* **Method:** `GET`
+* **Path:** `/api/agent/runs` and `/api/v1/agent/runs`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Lists all agent runs scoped to a merchant ID with optional state and status filters.
+
+### 16.4 Approve Pending Action
+* **Method:** `POST`
+* **Path:** `/api/agent/runs/{id}/approve`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Human operator sign-off on an action held in `REQUIRE_APPROVAL` state.
+* **Request:**
+  ```json
+  {
+    "notes": "Approved by senior finance operations."
+  }
+  ```
+* **Response (200 OK):** `ActionResponse` with updated status `EXECUTING` / `SUCCEEDED`.
+
+### 16.5 Get Operational Agent Report
+* **Method:** `GET`
+* **Path:** `/api/agent/runs/{id}/report`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Returns the final structured operational recovery report detailing root cause, revenue at risk, policy breakdown, actual recovered revenue, and ROI.
+* **Response (200 OK):** Structured JSON report separating estimated from actual verified metrics.
+
+### 16.6 Inspect Recovery Action
+* **Method:** `GET`
+* **Path:** `/api/actions/{id}`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Fetches status, idempotency key, causal trace ID, and verification details of an individual recovery action.
+* **Response (200 OK):** `RecoveryActionDetailResponse`
+
+### 16.7 Trace Causality Timeline
+* **Method:** `GET`
+* **Path:** `/api/audit/{trace_id}` and `/api/audit/trace/{trace_id}`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Fetches the immutable chronological event sequence for an agent causal trace.
+* **Response (200 OK):** List of audit events bound by `causal_trace_id`.
+
+---
+
+## 17. Razorpay Test Mode & Webhook Reconciliation APIs (Stage 6)
+
+### 17.1 Ingest Razorpay Webhook
+* **Method:** `POST`
+* **Path:** `/api/v1/webhooks/razorpay` and `/api/webhooks/razorpay`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Real-time webhook ingestion from Razorpay Sandbox with HMAC-SHA256 signature verification and 1MB size limit.
+* **Headers:** `X-Razorpay-Signature: <hmac-sha256-hex>`, `Content-Type: application/json`
+* **Request Body:** Raw Razorpay webhook JSON payload (e.g. `payment.captured`, `payment.failed`, `payment_link.paid`).
+* **Response (200 OK):**
+  ```json
+  {
+    "status": "success",
+    "event_id": "evt_rzp_987654321",
+    "event_type": "payment.captured",
+    "idempotent": false,
+    "processing_status": "PROCESSED",
+    "state_updated": true,
+    "related_entity_type": "payment",
+    "related_entity_id": "99999999-9999-9999-9999-999999999999",
+    "recovery_triggered": false,
+    "audit_event_id": "88888888-8888-8888-8888-888888888888",
+    "processed_at": "2026-09-05T12:00:00Z"
+  }
+  ```
+* **Duplicate Delivery Response (200 OK):**
+  ```json
+  {
+    "status": "idempotent_duplicate",
+    "event_id": "evt_rzp_987654321",
+    "event_type": "payment.captured",
+    "message": "Webhook event already processed previously. Zero duplicate mutations.",
+    "idempotent": true,
+    "processing_status": "DUPLICATE",
+    "processed_at": "2026-09-05T12:00:00Z"
+  }
+  ```
+* **Errors:** `400 Bad Request` if signature missing or invalid; `413 Request Entity Too Large` if payload exceeds 1MB.
+
+### 17.2 List Ingested Webhook Events
+* **Method:** `GET`
+* **Path:** `/api/v1/webhooks/events`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Queries audit log of received webhook events with processing status, payload hash, and zero secret leakage.
+* **Query Parameters:** `merchant_id` (optional), `event_type` (optional), `status` (optional), `limit` (default 50), `offset` (default 0).
+* **Response (200 OK):** Array of webhook event summaries with masked payloads.
+
+### 17.3 Inspect Webhook Event Detail
+* **Method:** `GET`
+* **Path:** `/api/v1/webhooks/events/{event_id}`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Inspects single webhook event status, received timestamp, and processing errors if any.
+* **Response (200 OK):** Webhook event detail object.
+* **Errors:** `404 Not Found` if event ID not found.
+
+### 17.4 Reprocess Webhook Event
+* **Method:** `POST`
+* **Path:** `/api/v1/webhooks/events/{event_id}/reprocess`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Re-evaluates a previously received webhook event safely with idempotency protection.
+
+### 17.5 Reconcile Payment (Independent Verification)
+* **Method:** `POST`
+* **Path:** `/api/v1/recovery/payments/{payment_id}/reconcile`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Performs independent financial reconciliation against provider state, verifying amount, currency, and settlement status. Transitions matching recovery actions to `VERIFIED` and marks recovery opportunities as `RECOVERED`.
+* **Query Parameters:** `causal_trace_id` (optional string for audit linkage).
+* **Response (200 OK):**
+  ```json
+  {
+    "payment_id": "99999999-9999-9999-9999-999999999999",
+    "reconciliation_status": "MATCHED",
+    "verified": true,
+    "actual_recovered_amount": 3500.00,
+    "provider_payment_id": "pay_test_3500",
+    "reconciled_at": "2026-09-05T12:05:00Z"
+  }
+  ```
+* **Discrepancy Response (200 OK):**
+  ```json
+  {
+    "payment_id": "99999999-9999-9999-9999-999999999999",
+    "reconciliation_status": "RECONCILIATION_REQUIRED",
+    "verified": false,
+    "discrepancy": "amount_mismatch",
+    "expected_amount": 1000.00,
+    "provider_amount": 10000.00
+  }
+  ```
+
+### 17.6 Inspect Payment Provider Status
+* **Method:** `GET`
+* **Path:** `/api/v1/payment-provider/status` and `/api/payment-provider/status`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Diagnostic health check confirming active provider mode (`razorpay_test` or `mock`), safety checks, and masked credentials.
+* **Response (200 OK):**
+  ```json
+  {
+    "requested_mode": "TEST",
+    "effective_provider": "razorpay_test",
+    "available_modes": ["MOCK", "TEST"],
+    "key_id_masked": "rzp_test_****",
+    "mode_enforced": "test",
+    "is_sandboxed": true
+  }
+  ```
+
+---
+
+## 18. Stage 8 Business Validation, Metrics & Explainability APIs
+
+### 18.1 Comprehensive Business Success Metrics
+* **Method:** `GET`
+* **Path:** `/api/v1/analytics/business-metrics`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Computes all 18 mandatory business success KPIs across Volume, Detection, ML, Policy, Execution, and Strict Financial Truth.
+* **Query Parameters:** `merchant_id` (optional UUID filter).
+* **Response (200 OK):**
+  ```json
+  {
+    "total_transactions": 1420,
+    "total_revenue": "4520000.00",
+    "total_revenue_at_risk": "184500.00",
+    "detected_revenue_leaks": 12,
+    "recovery_opportunities": 8,
+    "potential_recoverable_revenue": "122450.00",
+    "approved_recoveries": 7,
+    "executed_recoveries": 6,
+    "verified_recoveries": 5,
+    "actual_recovered_revenue": "28500.00",
+    "recovery_rate": 28.5,
+    "detection_rate": 96.2,
+    "false_positive_rate": 4.1,
+    "average_recovery_value": "5700.00",
+    "average_time_to_recovery_seconds": 184.2,
+    "policy_denial_rate": 12.5,
+    "approval_rate": 87.5,
+    "provider_success_rate": 94.0,
+    "system_cost": "225.00",
+    "net_recovered_revenue": "28275.00",
+    "roi_multiplier": 125.7,
+    "roi_percentage": 12570.0
+  }
+  ```
+
+### 18.2 9-Stage Recovery Funnel
+* **Method:** `GET`
+* **Path:** `/api/v1/analytics/funnel`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Quantifies operational conversion through all 9 stages: Transactions $\to$ Potential Leaks $\to$ Confirmed Leaks $\to$ Recovery Opportunities $\to$ Recommended $\to$ Policy Allowed $\to$ Executed $\to$ Verified $\to$ Recovered Revenue.
+* **Query Parameters:** `merchant_id` (optional UUID filter).
+* **Response (200 OK):**
+  ```json
+  {
+    "merchant_id": "00000000-0000-0000-0000-000000000000",
+    "stages": [
+      { "stage_number": 1, "stage_name": "Transactions Processed", "count": 1420, "volume": 4520000.0, "conversion_from_previous": 100.0 },
+      { "stage_number": 2, "stage_name": "Potential Revenue Leaks", "count": 14, "volume": 210000.0, "conversion_from_previous": 4.6 },
+      { "stage_number": 3, "stage_name": "Confirmed Revenue Leaks", "count": 12, "volume": 184500.0, "conversion_from_previous": 87.9 },
+      { "stage_number": 4, "stage_name": "Recovery Opportunities", "count": 8, "volume": 122450.0, "conversion_from_previous": 66.4 },
+      { "stage_number": 5, "stage_name": "Recommended Actions", "count": 8, "volume": 122450.0, "conversion_from_previous": 100.0 },
+      { "stage_number": 6, "stage_name": "Policy Allowed Actions", "count": 7, "volume": 107450.0, "conversion_from_previous": 87.8 },
+      { "stage_number": 7, "stage_name": "Executed Recoveries", "count": 6, "volume": 38450.0, "conversion_from_previous": 35.8 },
+      { "stage_number": 8, "stage_name": "Verified Recoveries", "count": 5, "volume": 28500.0, "conversion_from_previous": 74.1 },
+      { "stage_number": 9, "stage_name": "Actual Recovered Revenue", "count": 5, "volume": 28500.0, "conversion_from_previous": 100.0 }
+    ],
+    "overall_conversion_rate": 28.5
+  }
+  ```
+
+### 18.3 Executive Business Impact Report
+* **Method:** `GET`
+* **Path:** `/api/v1/analytics/business-report`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Executive dossier containing Category Leakage Breakdown, ML Model Performance, Agent Performance, Policy Performance, and Latency Benchmarks.
+* **Query Parameters:** `merchant_id` (optional UUID filter).
+
+### 18.4 Deep 10-Question Diagnostic Explainability & Audit Trace
+* **Method:** `GET`
+* **Path:** `/api/v1/recovery-opportunities/{id}/explainability`
+* **Status:** ✅ IMPLEMENTED
+* **Purpose:** Returns complete auditable explainability including 10 diagnostic Q&As, structured AI rationale, deterministic policy rules evaluation, chronological timeline, and database causal audit IDs.
+* **Response (200 OK):**
+  ```json
+  {
+    "opportunity_id": "00000000-0000-0000-0000-000000000000",
+    "diagnostic_qa": [
+      { "question": "What happened to cause this transaction to fail?", "answer": "Transaction failed at gateway due to timeout on upi route with bank HDFC." },
+      { "question": "Why was this flagged as a revenue leak?", "answer": "The failure pattern matched active leak cluster: UPI Route Degradation." }
+    ],
+    "ai_explanation": {
+      "problem": "Transient gateway route timeout during high-traffic window.",
+      "evidence": { "bank": "HDFC", "method": "upi", "error": "GATEWAY_TIMEOUT" },
+      "diagnosis": "Customer payment behavior indicates strong intent; failure is infrastructure-transient.",
+      "confidence": 0.91
+    },
+    "policy_explanation": {
+      "verdict": "ALLOW",
+      "allowed": true,
+      "approval_required": false,
+      "rules_evaluated": [
+        { "rule_id": "RULE_1", "rule_name": "Maximum Transaction Value Cap", "status": "PASSED" }
+      ]
+    },
+    "timeline": [
+      { "timestamp": "2026-09-05T12:00:00Z", "event_type": "transaction_failed", "actor": "GATEWAY", "description": "Payment failed" }
+    ],
+    "audit_trace": {
+      "opportunity_id": "...",
+      "payment_id": "...",
+      "action_id": "...",
+      "policy_decision_id": "..."
+    }
+  }
+  ```
+
+---
+
+## 19. Planned APIs (🔵 PLANNED)
 
 The following APIs are planned for enterprise multi-tenant production:
 * `POST /api/v1/auth/login` (OAuth2 / JWT merchant authentication).
 * `POST /api/v1/auth/refresh` (Token refresh endpoint).
 * `POST /api/v1/webhooks/subscriptions` (Dynamic merchant webhook URL registration).
 * `GET /api/v1/merchants/{id}/policies/custom` (Custom merchant policy editor).
+

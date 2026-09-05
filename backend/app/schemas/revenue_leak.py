@@ -25,11 +25,12 @@ class RevenueLeakResponse(BaseModel):
     severity: str
     severity_score: Decimal
     affected_transactions: int
+    gross_value_affected: Optional[Decimal] = Decimal("0.00")
     affected_amount: Decimal
     revenue_at_risk: Decimal
     currency: str
     confidence: Decimal
-    root_cause_candidates: List[str]
+    root_cause_candidates: List[Any] = Field(default_factory=list)
     evidence: Dict[str, Any]
     status: str
     created_at: datetime
@@ -43,3 +44,21 @@ class PaginatedRevenueLeaksResponse(BaseModel):
     items: List[RevenueLeakResponse]
     limit: int
     offset: int
+
+class LeakDetectionRequest(BaseModel):
+    merchant_id: Optional[uuid.UUID] = Field(None, description="Target merchant ID. If omitted, runs for all merchants.")
+    analysis_window_start: Optional[datetime] = Field(None, description="Start timestamp of incident/analysis window.")
+    analysis_window_end: Optional[datetime] = Field(None, description="End timestamp of incident/analysis window.")
+    baseline_window_start: Optional[datetime] = Field(None, description="Start timestamp of historical baseline window.")
+    baseline_window_end: Optional[datetime] = Field(None, description="End timestamp of historical baseline window.")
+    window_days: Optional[int] = Field(7, ge=1, le=90, description="Default window duration in days if explicit timestamps omitted.")
+
+class LeakDetectionSummaryResponse(BaseModel):
+    merchant_id: Optional[uuid.UUID] = None
+    detected_leaks_count: int
+    total_gross_affected_revenue: Decimal
+    total_revenue_at_risk: Decimal
+    analysis_window_start: datetime
+    analysis_window_end: datetime
+    leaks: List[RevenueLeakResponse]
+

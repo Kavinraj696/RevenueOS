@@ -30,6 +30,12 @@ class Payment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     device_type: Mapped[str] = mapped_column(String(30), nullable=False)
     route: Mapped[str] = mapped_column(String(50), nullable=False)
 
+    # Provider References & Reconciliation
+    provider_payment_id: Mapped[Optional[str]] = mapped_column(String(100), index=True, nullable=True)
+    provider_order_id: Mapped[Optional[str]] = mapped_column(String(100), index=True, nullable=True)
+    reconciliation_status: Mapped[Optional[str]] = mapped_column(String(50), default="PENDING", nullable=True)
+
+
     # Relationships
     merchant: Mapped["Merchant"] = relationship("Merchant", back_populates="payments")
     customer: Mapped["Customer"] = relationship("Customer", back_populates="payments")

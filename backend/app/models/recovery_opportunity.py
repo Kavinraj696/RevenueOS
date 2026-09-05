@@ -64,9 +64,42 @@ class RecoveryOpportunity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     recommended_actions_json: Mapped[Optional[list]] = mapped_column(
         JSON, nullable=True
     )
+    model_version: Mapped[Optional[str]] = mapped_column(
+        String(50), default="recovery_probability_v1", nullable=True
+    )
+    feature_version: Mapped[Optional[str]] = mapped_column(
+        String(50), default="v1.0.0", nullable=True
+    )
+    prediction_time: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=get_utc_now, nullable=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now, nullable=False
     )
+
+    @property
+    def transaction_id(self) -> Optional[uuid.UUID]:
+        return self.payment_id
+
+    @property
+    def eligible_revenue(self) -> Decimal:
+        return self.potentially_recoverable_value
+
+    @property
+    def expected_recovery_value(self) -> Decimal:
+        return self.expected_recovered_value
+
+    @property
+    def opportunity_score(self) -> Decimal:
+        return self.priority_score
+
+    @property
+    def rank(self) -> Optional[int]:
+        return getattr(self, "_rank", None)
+
+    @rank.setter
+    def rank(self, val: Optional[int]):
+        self._rank = val
 
     @property
     def transaction_amount(self) -> Decimal:
@@ -109,6 +142,11 @@ class RecoveryOpportunity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     @property
     def description(self) -> Optional[str]:
         return self.explanation or f"Recovery opportunity for ₹{self.gross_value_affected}"
+
+    @property
+    def actions(self) -> List["RecoveryAction"]:
+        return self.recovery_actions or []
+
 
     # Relationships
     revenue_leak: Mapped[Optional["RevenueLeak"]] = relationship("RevenueLeak", back_populates="opportunities")

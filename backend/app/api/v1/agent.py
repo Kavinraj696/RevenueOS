@@ -13,12 +13,15 @@ from app.models.payment_attempt import PaymentAttempt
 from app.models.revenue_leak import RevenueLeak
 from app.models.recovery_opportunity import RecoveryOpportunity
 from app.models.agent_decision import AgentDecision
+from app.models.agent_run import AgentRun
 from app.models.enums import PaymentStatus, OpportunityStatus
 from app.schemas.agent import (
     AgentInvestigationRequest,
     AgentInvestigationResponse,
     AgentDecisionResponse,
-    AgentDecisionsListResponse
+    AgentDecisionsListResponse,
+    AgentRunResponse,
+    AgentRunsListResponse
 )
 from app.schemas.analytics import (
     AgentChatRequest,
@@ -363,3 +366,183 @@ def get_agent_decision(
             detail=f"Agent decision {id} not found"
         )
     return decision
+
+
+# =============================================================================
+# STAGE 5 — AGENT RUN LIFECYCLE & AUDIT APIS
+# =============================================================================
+
+@router.post("/runs", response_model=AgentRunResponse, summary="Trigger autonomous AI Recovery Agent run")
+def create_agent_run(
+    req: AgentInvestigationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Launch an autonomous 9-stage AI Recovery Agent run.
+    Records lifecycle state, diagnostic findings, policy decision, and causal trace in database.
+    """
+    agent = AIRecoveryAgent(db)
+    res = agent.run_workflow(
+        merchant_id=req.merchant_id,
+        leak_id=req.leak_id,
+        opportunity_id=req.opportunity_id,
+        transaction_id=req.transaction_id,
+        auto_execute=req.auto_execute
+    )
+    run_record = None
+    if res.agent_run_id:
+        run_record = db.query(AgentRun).filter(AgentRun.id == res.agent_run_id).first()
+    if not run_record:
+        run_record = db.query(AgentRun).order_by(desc(AgentRun.created_at)).first()
+    if not run_record:
+        raise HTTPException(status_code=500, detail="Failed to retrieve created agent run record")
+    return run_record
+
+
+@router.get("/runs", response_model=AgentRunsListResponse, summary="List AI Recovery Agent runs")
+def list_agent_runs(
+    merchant_id: Optional[uuid.UUID] = Query(None, description="Filter runs by merchant ID"),
+    status: Optional[str] = Query(None, description="Filter runs by status (RUNNING, COMPLETED, FAILED)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db)
+):
+    query = db.query(AgentRun)
+    if merchant_id:
+        query = query.filter(AgentRun.merchant_id == merchant_id)
+    if status:
+        query = query.filter(func.upper(AgentRun.status) == status.upper().strip())
+    total = query.count()
+    runs = query.order_by(desc(AgentRun.created_at)).offset(offset).limit(limit).all()
+    return AgentRunsListResponse(total=total, items=runs)
+
+
+@router.get("/runs/{id}", response_model=AgentRunResponse, summary="Get single AI Recovery Agent run by ID")
+def get_agent_run(
+    id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    run_record = db.query(AgentRun).filter(AgentRun.id == id).first()
+    if not run_record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent run {id} not found")
+    return run_record
+
+
+@router.post("/runs/{id}/approve", summary="Approve pending recovery action from agent run")
+def approve_agent_run_action(
+    id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Approve an action resulting from this agent run that requires explicit human authorization.
+    Verifies action ownership, ensures idempotency and executes through RecoveryExecutor.
+    """
+    run_record = db.query(AgentRun).filter(AgentRun.id == id).first()
+    if not run_record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent run {id} not found")
+
+    from app.services.recovery_executor import RecoveryExecutor, RecoveryExecutionError
+    from app.models.recovery_action import RecoveryAction
+    from app.models.enums import ActionStatus
+
+    from app.models.recovery_opportunity import RecoveryOpportunity
+
+    action = db.query(RecoveryAction).join(
+        RecoveryOpportunity, RecoveryAction.opportunity_id == RecoveryOpportunity.id
+    ).filter(
+        RecoveryOpportunity.merchant_id == run_record.merchant_id,
+        RecoveryAction.status == ActionStatus.PENDING_APPROVAL.value
+    ).order_by(desc(RecoveryAction.created_at)).first()
+
+    if not action:
+        existing = db.query(RecoveryAction).join(
+            RecoveryOpportunity, RecoveryAction.opportunity_id == RecoveryOpportunity.id
+        ).filter(
+            RecoveryOpportunity.merchant_id == run_record.merchant_id,
+            RecoveryAction.status.in_([ActionStatus.APPROVED.value, ActionStatus.SUCCESS.value, ActionStatus.EXECUTING.value])
+        ).order_by(desc(RecoveryAction.created_at)).first()
+        if existing:
+            return {
+                "status": "ALREADY_APPROVED",
+                "message": f"Action {existing.id} has already been approved / processed (status: {existing.status}).",
+                "action_id": str(existing.id)
+            }
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No pending approval action found for this agent run."
+        )
+
+    executor = RecoveryExecutor(db)
+    try:
+        approved_act = executor.approve_action(action_id=action.id, notes=f"Approved via Agent Run {id}")
+        run_record.status = "COMPLETED"
+        db.commit()
+        return {
+            "status": "APPROVED",
+            "message": f"Action {action.id} successfully approved and dispatched.",
+            "action_id": str(action.id),
+            "new_status": approved_act.status
+        }
+    except RecoveryExecutionError as ex:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+
+
+@router.get("/runs/{id}/report", summary="Get comprehensive operational report for agent run")
+def get_agent_run_report(
+    id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves the structured operational report for the agent run,
+    clearly distinguishing estimated from verified actual outcomes,
+    policy evaluation, telemetry, and ROI.
+    """
+    run_record = db.query(AgentRun).filter(AgentRun.id == id).first()
+    if not run_record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent run {id} not found")
+
+    from app.models.recovery_action import RecoveryAction
+    from app.models.recovery_opportunity import RecoveryOpportunity
+    from app.services.recovery_executor import RecoveryExecutor
+    from decimal import Decimal
+
+    action = db.query(RecoveryAction).join(
+        RecoveryOpportunity, RecoveryAction.opportunity_id == RecoveryOpportunity.id
+    ).filter(
+        RecoveryOpportunity.merchant_id == run_record.merchant_id
+    ).order_by(desc(RecoveryAction.created_at)).first()
+
+    actual_recovered = Decimal(str(action.actual_recovered_amount)) if action and action.actual_recovered_amount else Decimal("0.00")
+    roi_info = RecoveryExecutor(db).calculate_recovery_roi(actual_recovered)
+
+    return {
+        "agent_run_id": str(run_record.id),
+        "causal_trace_id": run_record.causal_trace_id,
+        "merchant_id": str(run_record.merchant_id),
+        "status": run_record.status,
+        "started_at": run_record.started_at.isoformat() if run_record.started_at else None,
+        "completed_at": run_record.completed_at.isoformat() if run_record.completed_at else None,
+        "problem": run_record.problem,
+        "diagnosis": run_record.diagnosis,
+        "recommended_action": run_record.recommended_action,
+        "policy_verdict": run_record.policy_verdict,
+        "decision_summary": run_record.decision_summary,
+        "execution_action": {
+            "action_id": str(action.id) if action else None,
+            "action_type": action.action_type if action else None,
+            "status": action.status if action else None,
+            "requested_amount": float(action.amount) if action else 0.0,
+            "actual_recovered_amount": float(actual_recovered),
+            "verified_status": action.verified_status if action else "UNVERIFIED",
+            "verified_at": action.verified_at.isoformat() if action and action.verified_at else None
+        } if action else None,
+        "financial_reconciliation": {
+            "estimated_recovery": run_record.decision_summary.get("expected_recovery", 0.0),
+            "actual_recovered": float(actual_recovered),
+            "recovery_roi": roi_info["roi"],
+            "roi_metric": roi_info["roi_metric"],
+            "verification_status": action.verified_status if action else "UNVERIFIED"
+        },
+        "execution_logs": run_record.execution_logs_json
+    }
+

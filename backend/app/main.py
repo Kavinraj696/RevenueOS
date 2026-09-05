@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, status
+from fastapi import FastAPI, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
@@ -11,6 +11,8 @@ from app.db.base import Base
 from app.db.session import engine, SessionLocal, get_db
 from app.models.merchant import Merchant
 from app.synthetic.generator import SyntheticDataGenerator
+from app.security import SECURITY_HEADERS
+from app.api.v1.auth import router as auth_router
 
 from app.api.v1.merchants import router as merchants_router
 from app.api.v1.transactions import router as transactions_router
@@ -72,13 +74,44 @@ app = FastAPI(
 )
 
 # CORS configuration
+cors_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",")] if isinstance(settings.ALLOWED_ORIGINS, str) else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins if "*" not in cors_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_and_limits_middleware(request: Request, call_next):
+    # Phase 14: Request payload size limit (e.g. 1MB max)
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > settings.MAX_REQUEST_SIZE_BYTES:
+                return JSONResponse(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    content={
+                        "detail": f"Payload Too Large: Request body exceeds maximum allowed limit of {settings.MAX_REQUEST_SIZE_BYTES} bytes (1MB)."
+                    }
+                )
+        except ValueError:
+            pass
+
+    response = await call_next(request)
+
+    # Phase 45: Inject standard production security headers
+    for header_name, header_val in SECURITY_HEADERS.items():
+        response.headers[header_name] = header_val
+
+    return response
+
+
+# Register Auth router
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 
 # Health checks
 @app.get("/health", tags=["Health"])
@@ -124,6 +157,7 @@ app.include_router(providers_router, prefix="/api/payment-provider", tags=["Paym
 app.include_router(providers_router, prefix=f"{settings.API_V1_STR}/payment-provider", tags=["Payment Providers"])
 app.include_router(recovery_router, prefix="/api/recovery", tags=["Recovery Execution Pipeline"])
 app.include_router(recovery_router, prefix=f"{settings.API_V1_STR}/recovery", tags=["Recovery Execution Pipeline"])
+app.include_router(recovery_router, prefix="/api", tags=["Recovery Actions Direct"])
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit System"])
 app.include_router(audit_router, prefix=f"{settings.API_V1_STR}/audit", tags=["Audit System"])
 app.add_api_route("/audit", serve_audit_ui, methods=["GET"], response_class=HTMLResponse, include_in_schema=False)

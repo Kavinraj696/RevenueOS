@@ -229,3 +229,28 @@ def demo_failure_and_graceful_fallback(
         overall_recovery_status="recovered" if alt_act.status == "success" else alt_act.status,
         audit_events_recorded=audit_count
     )
+
+
+@router.post("/payments/{payment_id}/reconcile", summary="Reconcile Payment")
+def reconcile_payment_endpoint(
+    payment_id: uuid.UUID,
+    provider_payment_id: Optional[str] = Query(None, description="Optional provider payment ID"),
+    causal_trace_id: Optional[str] = Query(None, description="Optional causal trace ID"),
+    db: Session = Depends(get_db)
+):
+    """
+    Independently reconciles payment status against Razorpay test provider.
+    Verifies amount and currency integrity before confirming recovered revenue.
+    """
+    from app.services.reconciliation import PaymentReconciliationService, ReconciliationError
+    service = PaymentReconciliationService(db)
+    try:
+        res = service.reconcile_payment(
+            payment_id=payment_id,
+            provider_payment_id=provider_payment_id,
+            causal_trace_id=causal_trace_id
+        )
+        return res
+    except ReconciliationError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+

@@ -1,0 +1,1614 @@
+[
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:01:31.711528+00:00",
+    "training_start": "2026-07-01T01:02:32.904712+00:00",
+    "training_end": "2026-08-21T13:04:00+00:00",
+    "train_samples": 118,
+    "val_samples": 40,
+    "test_samples": 40,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": false,
+      "accuracy": 0.8,
+      "precision": 0.5625,
+      "recall": 0.9,
+      "f1": 0.6923,
+      "roc_auc": 0.89,
+      "pr_auc": 0.6239,
+      "brier_score": 0.1383,
+      "confusion_matrix": [
+        [
+          23,
+          7
+        ],
+        [
+          1,
+          9
+        ]
+      ],
+      "test_samples": 40,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 4,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 8,
+          "precision_at_k": 0.625,
+          "recall_at_k": 0.5
+        }
+      }
+    },
+    "calibration_method": "none",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:02:29.472357+00:00",
+    "training_start": "2026-07-01T01:02:32.904712+00:00",
+    "training_end": "2026-08-21T13:04:00+00:00",
+    "train_samples": 118,
+    "val_samples": 40,
+    "test_samples": 40,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.75,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.89,
+      "pr_auc": 0.6239,
+      "brier_score": 0.1342,
+      "confusion_matrix": [
+        [
+          30,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ],
+      "test_samples": 40,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 4,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 8,
+          "precision_at_k": 0.625,
+          "recall_at_k": 0.5
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:08:08.632430+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0707,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:08:53.886032+00:00",
+    "training_start": "2026-07-01T01:02:32.904712+00:00",
+    "training_end": "2026-08-21T13:04:00+00:00",
+    "train_samples": 118,
+    "val_samples": 40,
+    "test_samples": 40,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.75,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.89,
+      "pr_auc": 0.6239,
+      "brier_score": 0.1342,
+      "confusion_matrix": [
+        [
+          30,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ],
+      "test_samples": 40,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 4,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 8,
+          "precision_at_k": 0.625,
+          "recall_at_k": 0.5
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:09:33.552384+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0707,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:41:34.027172+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0707,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:44:02.395980+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0707,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T13:56:20.695016+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0707,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T14:00:26.693344+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T14:06:05.111646+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T14:19:16.325743+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T14:21:19.780464+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T14:23:28.109402+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T14:58:17.174573+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:01:10.948700+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:03:00.975720+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:03:58.938821+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:06:13.771523+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:07:23.045682+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:28:29.196022+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:30:51.876865+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T15:40:37.922697+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T16:03:22.891983+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T16:08:55.272497+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T16:27:27.071781+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T16:37:19.032622+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T16:57:35.468186+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T17:00:12.278798+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T17:13:28.180404+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.96,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571,
+      "roc_auc": 0.9697,
+      "pr_auc": 0.8056,
+      "brier_score": 0.0706,
+      "confusion_matrix": [
+        [
+          21,
+          1
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.3333
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.6,
+          "recall_at_k": 1.0
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T17:33:14.947095+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.88,
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1": 0.7692,
+      "roc_auc": 0.95,
+      "pr_auc": 0.7862,
+      "brier_score": 0.2071,
+      "confusion_matrix": [
+        [
+          17,
+          3
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.8,
+          "recall_at_k": 0.8
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": false
+  },
+  {
+    "model_name": "payment_recovery_probability",
+    "model_version": "recovery_probability_v1",
+    "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+    "feature_version": "v1.0.0",
+    "dataset_version": "recovery_dataset_v1.0.0",
+    "training_timestamp": "2026-09-05T18:15:51.074844+00:00",
+    "training_start": "2026-08-18T13:44:00+00:00",
+    "training_end": "2026-08-27T22:49:00+00:00",
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.88,
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1": 0.7692,
+      "roc_auc": 0.95,
+      "pr_auc": 0.7862,
+      "brier_score": 0.2071,
+      "confusion_matrix": [
+        [
+          17,
+          3
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.8,
+          "recall_at_k": 0.8
+        }
+      }
+    },
+    "calibration_method": "sigmoid_platt_scaling",
+    "artifact_path": "K:\\Documents\\Razorpay\\RevenueOS\\backend\\app\\ml\\artifacts\\payment_recovery_probability_recovery_probability_v1.joblib",
+    "is_active": true
+  }
+]

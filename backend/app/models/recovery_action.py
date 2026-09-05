@@ -55,6 +55,21 @@ class RecoveryAction(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     executed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    idempotency_key: Mapped[Optional[str]] = mapped_column(
+        String(128), index=True, nullable=True
+    )
+    causal_trace_id: Mapped[Optional[str]] = mapped_column(
+        String(64), index=True, nullable=True
+    )
+    verified_status: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )
+    verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    actual_recovered_amount: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(14, 2), nullable=True
+    )
 
     # Convenience properties
     @property
@@ -68,6 +83,12 @@ class RecoveryAction(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     @execution_result.setter
     def execution_result(self, val: Optional[Dict[str, Any]]) -> None:
         self.result = val
+
+    @property
+    def notes(self) -> Optional[str]:
+        if self.reason and "Notes: " in self.reason:
+            return self.reason.split("Notes: ", 1)[1]
+        return self.reason
 
     # Relationships
     opportunity: Mapped["RecoveryOpportunity"] = relationship("RecoveryOpportunity", back_populates="recovery_actions")

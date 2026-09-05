@@ -94,3 +94,14 @@ class PaymentProvider(ABC):
     ) -> bool:
         """Verify HMAC-SHA256 signature of incoming webhook."""
         pass
+
+    @abstractmethod
+    def normalize_payment_response(self, raw: Dict[str, Any]) -> Any:
+        """Normalize raw provider payload into standardized PaymentResult."""
+        pass
+
+    @abstractmethod
+    def fetch_normalized_payment(self, payment_id: str) -> Any:
+        """Retrieve and normalize payment details by ID."""
+        pass
+

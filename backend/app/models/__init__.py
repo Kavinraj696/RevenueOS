@@ -28,6 +28,7 @@ from app.models.revenue_leak import RevenueLeak
 from app.models.recovery_opportunity import RecoveryOpportunity
 from app.models.recovery_action import RecoveryAction
 from app.models.agent_decision import AgentDecision
+from app.models.agent_run import AgentRun
 from app.models.policy_decision import PolicyDecision
 from app.models.audit_event import AuditEvent
 from app.models.webhook_event import WebhookEvent
@@ -63,6 +64,7 @@ __all__ = [
     "RecoveryOpportunity",
     "RecoveryAction",
     "AgentDecision",
+    "AgentRun",
     "PolicyDecision",
     "AuditEvent",
     "WebhookEvent",

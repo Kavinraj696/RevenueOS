@@ -956,6 +956,147 @@
       flex-direction: column;
       gap: 10px;
     }
+
+    /* Stage 8: Recovery Funnel Visualizer */
+    .funnel-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .funnel-step-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 140px 100px;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px 14px;
+      transition: all 0.15s ease;
+    }
+    .funnel-step-row:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    .funnel-bar-bg {
+      background: rgba(255, 255, 255, 0.06);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .funnel-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      transition: width 0.4s ease;
+    }
+
+    /* Drawer Tabs */
+    .drawer-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .drawer-tab-btn {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .drawer-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .drawer-tab-btn.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.08);
+    }
+    .drawer-pane {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .drawer-pane.active {
+      display: flex;
+    }
+
+    /* Diagnostic Q&A Cards */
+    .qna-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .qna-question {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .qna-answer {
+      font-size: 0.82rem;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+    .qna-meta {
+      font-size: 0.72rem;
+      color: var(--text-faint);
+      display: flex;
+      gap: 12px;
+    }
+
+    /* Timeline Trace */
+    .timeline-container {
+      position: relative;
+      padding-left: 20px;
+      border-left: 2px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-left: 8px;
+    }
+    .timeline-node {
+      position: relative;
+    }
+    .timeline-dot {
+      position: absolute;
+      left: -27px;
+      top: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: 2px solid var(--bg-surface);
+    }
+    .timeline-time {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .timeline-title {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .timeline-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -1369,10 +1510,11 @@
                 <th>Status</th>
                 <th>Summary Description</th>
                 <th>Action ID</th>
+                <th>Inspection</th>
               </tr>
             </thead>
             <tbody id="audit-tbody">
-              <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Loading audit events...</td></tr>
+              <tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Loading audit events...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1460,6 +1602,75 @@
             <div class="stat-sub">Return on implementation ratio</div>
           </div>
         </div>
+
+        <!-- STAGE 8: 9-STAGE RECOVERY FUNNEL -->
+        <div class="card" style="margin-top: 24px;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="font-size: 1.05rem; color: #fff; font-weight: 700;">RevenueOS 9-Stage Conversion Funnel (Phase 4)</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time conversion velocity from initial transaction ingestion to cryptographic verified recovery.</p>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Overall Recovery Yield:</span>
+              <span class="badge badge-success" id="funnel-overall-yield" style="font-size: 0.85rem; font-weight: 700;">0.0%</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="funnel-steps-container" class="funnel-container">
+              <!-- Dynamically populated via loadRoi() -->
+            </div>
+          </div>
+        </div>
+
+        <!-- STAGE 8: LEAK CATEGORY BREAKDOWN & LATENCY BENCHMARKS -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px;">
+          <!-- Leak Category Analysis -->
+          <div class="card">
+            <div class="card-header">
+              <h3 style="font-size: 0.95rem; color: #fff; font-weight: 700;">Leak Category Analysis (Phase 17)</h3>
+              <p style="font-size: 0.75rem; color: var(--text-muted);">Breakdown by revenue loss vector and recovery efficiency.</p>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <table class="data-table" id="leak-categories-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th class="text-right">Leaks</th>
+                    <th class="text-right">Revenue at Risk</th>
+                    <th class="text-right">Verified Recovery</th>
+                    <th class="text-right">Yield %</th>
+                  </tr>
+                </thead>
+                <tbody id="leak-categories-tbody">
+                  <tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 14px;">Loading category analytics...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Subsystem Latency & SLA Benchmarks -->
+          <div class="card">
+            <div class="card-header">
+              <h3 style="font-size: 0.95rem; color: #fff; font-weight: 700;">Subsystem Latency Benchmarks (Phase 22)</h3>
+              <p style="font-size: 0.75rem; color: var(--text-muted);">Deterministic throughput timings across the autonomous recovery pipeline.</p>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <table class="data-table" id="latencies-table">
+                <thead>
+                  <tr>
+                    <th>Subsystem</th>
+                    <th class="text-right">Avg (ms)</th>
+                    <th class="text-right">p50 (ms)</th>
+                    <th class="text-right">p95 (ms)</th>
+                  </tr>
+                </thead>
+                <tbody id="latencies-tbody">
+                  <tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 14px;">Loading latency metrics...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </section>
 
     </div>
@@ -1467,69 +1678,161 @@
 
   <!-- Detailed Investigation Drawer Modal -->
   <div class="drawer-overlay" id="investigation-drawer" onclick="if(event.target===this) closeDrawer()">
-    <div class="drawer-content">
+    <div class="drawer-content" style="width: 650px;">
       <div class="drawer-header">
         <div>
-          <h3 style="font-size: 1.1rem; color: #fff;">Opportunity Investigation</h3>
+          <h3 style="font-size: 1.1rem; color: #fff;">Opportunity Forensic Investigation</h3>
           <span style="font-size: 0.75rem; color: var(--text-muted);" id="drawer-opp-id">ID: -</span>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="closeDrawer()">✕</button>
       </div>
 
+      <!-- Drawer Navigation Tabs -->
+      <div class="drawer-tabs">
+        <button class="drawer-tab-btn active" id="btn-tab-telemetry" onclick="switchDrawerTab('telemetry')">Telemetry & Action</button>
+        <button class="drawer-tab-btn" id="btn-tab-qna" onclick="switchDrawerTab('qna')">10 Diagnostic Q&As</button>
+        <button class="drawer-tab-btn" id="btn-tab-aipolicy" onclick="switchDrawerTab('aipolicy')">AI & Policy Rationale</button>
+        <button class="drawer-tab-btn" id="btn-tab-timeline" onclick="switchDrawerTab('timeline')">Timeline & Audit</button>
+      </div>
+
       <div class="drawer-body">
-        <div class="drawer-section">
-          <div class="drawer-section-title">Failure Telemetry</div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Customer</span>
-            <span style="font-weight: 600;" id="drawer-customer">-</span>
+        <!-- PANE 1: TELEMETRY & ACTION -->
+        <div id="pane-telemetry" class="drawer-pane active">
+          <div class="drawer-section">
+            <div class="drawer-section-title">Failure Telemetry</div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Customer</span>
+              <span style="font-weight: 600;" id="drawer-customer">-</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Gross Value Affected</span>
+              <span class="mono" style="color: #fff; font-weight: 700;" id="drawer-amount">₹0.00</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Failure Reason</span>
+              <span style="color: var(--danger);" id="drawer-failure">-</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Priority Score</span>
+              <span class="badge badge-danger" id="drawer-priority">-</span>
+            </div>
           </div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Amount</span>
-            <span class="mono" style="color: #fff; font-weight: 700;" id="drawer-amount">₹0.00</span>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">ML Recovery Scoring</div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Recovery Probability</span>
+              <span class="mono" style="color: var(--success); font-weight: 700;" id="drawer-prob">0%</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Expected Recovery Value</span>
+              <span class="mono" style="color: var(--info); font-weight: 700;" id="drawer-exp-val">₹0.00</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Model Confidence</span>
+              <span id="drawer-model-conf">91.0% (LightGBM Recoverability Model)</span>
+            </div>
           </div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Failure Reason</span>
-            <span style="color: var(--danger);" id="drawer-failure">-</span>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">Deterministic Policy Verdict</div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Policy Verdict</span>
+              <span style="color: var(--success); font-weight: 700;" id="drawer-policy-verdict">ALLOW</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Policy Rule</span>
+              <span style="color: var(--success);" id="drawer-policy-rule">Rule #1: Permitted recovery action</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Approval Required</span>
+              <span id="drawer-approval-req">False (Autonomous)</span>
+            </div>
           </div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Priority Score</span>
-            <span class="badge badge-danger" id="drawer-priority">-</span>
+
+          <div style="margin-top: auto; display: flex; gap: 10px;">
+            <button class="btn btn-primary" style="flex: 1;" id="drawer-exec-btn" onclick="executeOpportunityFromDrawer()">
+              ⚡ Execute Autonomous Recovery
+            </button>
+            <button class="btn btn-secondary" onclick="closeDrawer()">Close</button>
           </div>
         </div>
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">ML Recovery Scoring</div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Recovery Probability</span>
-            <span class="mono" style="color: var(--success); font-weight: 700;" id="drawer-prob">0%</span>
+        <!-- PANE 2: 10 DIAGNOSTIC QUESTIONS & ANSWERS (PHASE 7) -->
+        <div id="pane-qna" class="drawer-pane">
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">
+            Strict System Explainability: Every answer is derived from immutable DB records and telemetry without LLM hallucinations.
           </div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Expected Recovery Value</span>
-            <span class="mono" style="color: var(--info); font-weight: 700;" id="drawer-exp-val">₹0.00</span>
-          </div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Model Confidence</span>
-            <span>88.4% (Ensemble Model v1.2)</span>
+          <div id="drawer-qna-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">Loading diagnostic answers...</div>
           </div>
         </div>
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">Deterministic Policy Verdict</div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Policy Rule</span>
-            <span style="color: var(--success);" id="drawer-policy-rule">Rule #12: Low Risk Auto-Execute</span>
+        <!-- PANE 3: AI & POLICY BREAKDOWN (PHASES 8 & 9) -->
+        <div id="pane-aipolicy" class="drawer-pane">
+          <div class="drawer-section">
+            <div class="drawer-section-title">AI Forensic Diagnosis (Phase 8)</div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Problem</span>
+              <span id="drawer-ai-problem" style="color: #f87171; font-weight: 600;">-</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Diagnosis</span>
+              <span id="drawer-ai-diagnosis" style="color: #fff;">-</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Recommendation</span>
+              <span id="drawer-ai-rec" class="badge badge-info">-</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">AI Confidence</span>
+              <span id="drawer-ai-conf" class="mono" style="color: var(--success); font-weight: 700;">-</span>
+            </div>
           </div>
-          <div class="key-value-row">
-            <span style="color: var(--text-muted);">Approval Required</span>
-            <span id="drawer-approval-req">False (Autonomous)</span>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">Deterministic Policy Constraints (Phase 9)</div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Rules Evaluated</span>
+              <span id="drawer-policy-evaluated" class="mono" style="font-size: 0.75rem;">-</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Single-Action Cap</span>
+              <span id="drawer-policy-cap" class="mono">₹15,000.00</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Retry Limit</span>
+              <span id="drawer-policy-retries" class="mono">Max 3 attempts</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Cooldown Window</span>
+              <span id="drawer-policy-cooldown" class="mono">14,400s (4 hours)</span>
+            </div>
+            <div class="key-value-row">
+              <span style="color: var(--text-muted);">Policy Rationale</span>
+              <span id="drawer-policy-why" style="color: #93c5fd; font-size: 0.8rem;">-</span>
+            </div>
           </div>
         </div>
 
-        <div style="margin-top: auto; display: flex; gap: 10px;">
-          <button class="btn btn-primary" style="flex: 1;" id="drawer-exec-btn" onclick="executeOpportunityFromDrawer()">
-            ⚡ Execute Autonomous Recovery
-          </button>
-          <button class="btn btn-secondary" onclick="closeDrawer()">Close</button>
+        <!-- PANE 4: TIMELINE & AUDIT TRACE (PHASES 12 & 13) -->
+        <div id="pane-timeline" class="drawer-pane">
+          <div class="drawer-section">
+            <div class="drawer-section-title">Chronological Recovery Timeline (Phase 12)</div>
+            <div class="timeline-container" id="drawer-timeline-list">
+              <div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 10px;">Loading chronological timeline...</div>
+            </div>
+          </div>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">Causal Audit Trail Identifiers (Phase 13)</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">
+              Authoritative database primary keys proving end-to-end causality:
+            </div>
+            <div id="drawer-audit-trace-box" style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1554,35 +1857,99 @@
           <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; letter-spacing: 0.04em;">
             Select Demo Scenario to Execute:
           </div>
-          <div class="scenario-cards-grid">
-            <div class="scenario-card active" id="card-payment_degradation" onclick="selectDemoScenario('payment_degradation')">
+          <div class="scenario-cards-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+            <!-- CANONICAL GOLDEN SCENARIO -->
+            <div class="scenario-card active" id="card-golden_scenario" onclick="selectDemoScenario('golden_scenario')" style="border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);">
+              <span class="scenario-card-badge" style="background: rgba(245, 158, 11, 0.25); color: #f59e0b;">★ GOLDEN DEMO</span>
+              <h4>Canonical E2E Recovery</h4>
+              <p>Full 10-step lifecycle: Transaction (₹9.5k) → Leak → ML (91%) → AI Agent → Policy → Razorpay Test → Webhook → Reconcile → 632x ROI.</p>
+            </div>
+
+            <!-- SCENARIO A -->
+            <div class="scenario-card" id="card-scenario_a" onclick="selectDemoScenario('scenario_a')">
+              <span class="scenario-card-badge" style="background: var(--success-bg); color: var(--success);">SCENARIO A</span>
+              <h4>Autonomous Payment Link</h4>
+              <p>UPI drop-off (₹4,999) → ML 88% → Policy ALLOW → Razorpay link → Captured → Reconciled → 332x ROI.</p>
+            </div>
+
+            <!-- SCENARIO B -->
+            <div class="scenario-card" id="card-scenario_b" onclick="selectDemoScenario('scenario_b')">
+              <span class="scenario-card-badge" style="background: var(--danger-bg); color: var(--danger);">SCENARIO B</span>
+              <h4>Policy Denied Fraud</h4>
+              <p>High-risk fraud candidate (₹6,50,000) → Single-action cap & risk segment → Blocked by Rule 5 → Provider NEVER called.</p>
+            </div>
+
+            <!-- SCENARIO C -->
+            <div class="scenario-card" id="card-scenario_c" onclick="selectDemoScenario('scenario_c')">
+              <span class="scenario-card-badge" style="background: var(--warning-bg); color: var(--warning);">SCENARIO C</span>
+              <h4>Human Approval Gate</h4>
+              <p>High-value B2B order (₹85,000) → Exceeds auto-cap → Held in approval gate → Operator sign-off → Verified.</p>
+            </div>
+
+            <!-- SCENARIO D -->
+            <div class="scenario-card" id="card-scenario_d" onclick="selectDemoScenario('scenario_d')">
+              <span class="scenario-card-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">SCENARIO D</span>
+              <h4>Gateway Timeout & Fallback</h4>
+              <p>Primary route encounters 504 Gateway Timeout → Handled gracefully → Auto fallback to alternate rail → ₹3,499 recovered.</p>
+            </div>
+
+            <!-- SCENARIO E -->
+            <div class="scenario-card" id="card-scenario_e" onclick="selectDemoScenario('scenario_e')">
+              <span class="scenario-card-badge" style="background: var(--info-bg); color: var(--info);">SCENARIO E</span>
+              <h4>Webhook Replay Idempotency</h4>
+              <p>Replayed webhook capture delivery → Cryptographic idempotency key match → Zero duplicate balance credited.</p>
+            </div>
+
+            <!-- SCENARIO F -->
+            <div class="scenario-card" id="card-scenario_f" onclick="selectDemoScenario('scenario_f')">
+              <span class="scenario-card-badge" style="background: var(--danger-bg); color: var(--danger);">SCENARIO F</span>
+              <h4>Amount Mismatch Refusal</h4>
+              <p>Discrepancy: Expected ₹5,000 vs Provider ₹3,000 → Verification refused → Marked RECONCILIATION_REQUIRED.</p>
+            </div>
+
+            <!-- SCENARIO G -->
+            <div class="scenario-card" id="card-scenario_g" onclick="selectDemoScenario('scenario_g')">
+              <span class="scenario-card-badge" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">SCENARIO G</span>
+              <h4>Low-Prob Suppression</h4>
+              <p>Closed account → ML probability 8% (< 15% threshold) → Outbound outreach suppressed → Saved merchant costs.</p>
+            </div>
+
+            <!-- SCENARIO H -->
+            <div class="scenario-card" id="card-scenario_h" onclick="selectDemoScenario('scenario_h')">
+              <span class="scenario-card-badge" style="background: var(--info-bg); color: var(--info);">SCENARIO H</span>
+              <h4>Enterprise Mandate Recovery</h4>
+              <p>Monthly recurring auto-debit (₹45,000 MRR) failed → 1-click update link → Mandate restored → ₹5.4L ARR protected.</p>
+            </div>
+
+            <!-- SCENARIOS 1-5 -->
+            <div class="scenario-card" id="card-payment_degradation" onclick="selectDemoScenario('payment_degradation')">
               <span class="scenario-card-badge" style="background: var(--danger-bg); color: var(--danger);">SCENARIO 1</span>
               <h4>Payment Degradation</h4>
-              <p>Detect anomaly → Bank/method/time cluster → RAR → Recommend → Execute safe recovery → Recovered revenue.</p>
+              <p>Detect anomaly → Bank/method/time cluster → RAR → Recommend → Execute safe recovery.</p>
             </div>
 
             <div class="scenario-card" id="card-checkout_abandonment" onclick="selectDemoScenario('checkout_abandonment')">
               <span class="scenario-card-badge" style="background: var(--warning-bg); color: var(--warning);">SCENARIO 2</span>
               <h4>Checkout Abandonment</h4>
-              <p>Detect high-value drop-offs (≥ ₹15,000) → ML recovery score → Prioritize → 1-click link → Simulate payment → Update ROI.</p>
+              <p>Detect high-value drop-offs (≥ ₹15,000) → ML recovery score → Prioritize → 1-click link.</p>
             </div>
 
             <div class="scenario-card" id="card-subscription_failures" onclick="selectDemoScenario('subscription_failures')">
               <span class="scenario-card-badge" style="background: var(--info-bg); color: var(--info);">SCENARIO 3</span>
               <h4>Subscription Failures</h4>
-              <p>Detect failure spike → Identify subscriptions → Estimate recoverability → Trigger safe recovery workflow → Show result.</p>
+              <p>Detect failure spike → Estimate recoverability → Safe recovery workflow → Show preserved MRR.</p>
             </div>
 
             <div class="scenario-card" id="card-recovery_failure" onclick="selectDemoScenario('recovery_failure')">
               <span class="scenario-card-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">SCENARIO 4</span>
               <h4>Recovery Failure & Fallback</h4>
-              <p>Primary action fails (gateway timeout) → Forensic diagnosis → Alternative bounded action → Execute → Succeed.</p>
+              <p>Primary action fails → Forensic diagnosis → Alternative action → Execute → Succeed.</p>
             </div>
 
             <div class="scenario-card" id="card-unsafe_action" onclick="selectDemoScenario('unsafe_action')">
               <span class="scenario-card-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">SCENARIO 5</span>
-              <h4>Unsafe Action (Safety Gate)</h4>
-              <p>High-value (₹1.25L) low-confidence (35%) candidate → AI recommends debit → Policy blocks automatic execution → Merchant approval required.</p>
+              <h4>Unsafe Action Gate</h4>
+              <p>High-value (₹1.25L) low-confidence (35%) → AI recommends → Policy blocks → Merchant approval.</p>
             </div>
           </div>
         </div>
@@ -1669,6 +2036,99 @@
     </div>
   </div>
 
+  <!-- ===================================================================== -->
+  <!-- AUDIT EVENT DETAIL INSPECTION MODAL -->
+  <!-- ===================================================================== -->
+  <div id="audit-detail-modal" class="demo-modal-overlay">
+    <div class="demo-modal-box" style="width: 780px; max-width: 95vw;">
+      <div class="demo-modal-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">📜</span>
+          <div>
+            <h3 id="adm-title" style="margin: 0; font-size: 1.1rem; color: #fff;">Audit Event Inspection</h3>
+            <p id="adm-subtitle" style="margin: 2px 0 0 0; font-size: 0.78rem; color: var(--text-muted);">Immutable verification record in operational causality ledger</p>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeAuditDetailModal()" style="padding: 4px 10px; font-size: 1rem;">✕</button>
+      </div>
+
+      <div class="demo-modal-body" style="display: flex; flex-direction: column; gap: 16px; padding: 20px; max-height: 75vh; overflow-y: auto;">
+        <!-- Top Status & Actor Badges -->
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Status:</span>
+            <span id="adm-status-badge" class="badge badge-success">SUCCESS</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Actor:</span>
+            <span id="adm-actor-badge" class="badge badge-info">SYSTEM</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Recorded At:</span>
+            <span id="adm-timestamp" class="mono" style="font-size: 0.8rem; color: var(--text-main);">-</span>
+          </div>
+        </div>
+
+        <!-- Summary Banner -->
+        <div>
+          <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">
+            Summary Description
+          </div>
+          <div id="adm-summary" style="background: rgba(37, 99, 235, 0.08); border-left: 3px solid var(--primary); padding: 12px 16px; border-radius: 6px; font-size: 0.9rem; color: #fff; line-height: 1.5;">
+            -
+          </div>
+        </div>
+
+        <!-- Identifiers Grid -->
+        <div>
+          <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">
+            Causality Identifiers
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 6px;">
+              <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">Event UUID</span>
+              <span id="adm-event-id" class="mono" style="font-size: 0.78rem; word-break: break-all; color: #38bdf8;">-</span>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 6px;">
+              <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">Recovery Action ID</span>
+              <span id="adm-action-id" class="mono" style="font-size: 0.78rem; word-break: break-all; color: #10b981;">-</span>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 6px;">
+              <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">Opportunity ID</span>
+              <span id="adm-opp-id" class="mono" style="font-size: 0.78rem; word-break: break-all; color: #f59e0b;">-</span>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 6px;">
+              <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">Transaction ID</span>
+              <span id="adm-tx-id" class="mono" style="font-size: 0.78rem; word-break: break-all; color: #a78bfa;">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metadata & Context JSON Viewer -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">
+              Immutable Payload & Context Metadata (HMAC Verified)
+            </span>
+            <button class="btn btn-secondary btn-sm" onclick="copyAuditMetadata()" style="padding: 2px 8px; font-size: 0.72rem;">📋 Copy JSON</button>
+          </div>
+          <pre id="adm-metadata-json" style="background: #060913; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #cbd5e1; max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;"></pre>
+        </div>
+      </div>
+
+      <div style="padding: 14px 20px; border-top: 1px solid var(--border-subtle); background: rgba(13, 18, 31, 0.95); display: flex; justify-content: space-between; align-items: center;">
+        <div id="adm-timeline-btn-wrapper">
+          <a id="adm-timeline-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="gap: 6px;">
+            <span>🌐</span> Open Full Causality Timeline ↗
+          </a>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary btn-sm" onclick="closeAuditDetailModal()">Close Inspector</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // State
     let activeMerchantId = null;
@@ -1711,6 +2171,7 @@
       else if (currentView === 'recovery') loadRecoveryActions();
       else if (currentView === 'audit') loadAuditTrail();
       else if (currentView === 'roi') loadRoi();
+      else if (currentView === 'agent') document.getElementById('chat-input')?.focus();
     }
 
     // Initialize Merchants
@@ -1720,17 +2181,29 @@
         if (!res.ok) throw new Error('Failed to fetch merchants');
         merchantsList = await res.json();
 
+        // Prioritize active commercial scenario merchants (Apex Electronics, TrendStyle, CloudFlow, etc.)
+        const priorityOrder = ['Apex Electronics', 'TrendStyle Apparel', 'CloudFlow SaaS', 'Titan B2B Industrial', 'LuxeLiving Home'];
+        merchantsList.sort((a, b) => {
+          const idxA = priorityOrder.indexOf(a.name);
+          const idxB = priorityOrder.indexOf(b.name);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
         const sel = document.getElementById('global-merchant-select');
         sel.innerHTML = '';
         merchantsList.forEach(m => {
           const opt = document.createElement('option');
           opt.value = m.id;
-          opt.textContent = `${m.name} (${m.slug})`;
+          opt.textContent = m.name;
           sel.appendChild(opt);
         });
 
         if (merchantsList.length > 0) {
           activeMerchantId = merchantsList[0].id;
+          sel.value = activeMerchantId;
           loadOverview();
         }
       } catch (err) {
@@ -1751,11 +2224,17 @@
         if (!res.ok) throw new Error('Failed to load overview analytics');
         const data = await res.json();
 
-        document.getElementById('ov-revenue-processed').textContent = `₹${data.revenue_processed.toLocaleString('en-IN')}`;
-        document.getElementById('ov-revenue-at-risk').textContent = `₹${data.revenue_at_risk.toLocaleString('en-IN')}`;
-        document.getElementById('ov-potentially-recoverable').textContent = `₹${data.potentially_recoverable.toLocaleString('en-IN')}`;
-        document.getElementById('ov-recovered-revenue').textContent = `₹${data.recovered_revenue.toLocaleString('en-IN')}`;
-        document.getElementById('ov-recovery-rate').textContent = `${data.recovery_rate.toFixed(1)}%`;
+        const revProc = parseFloat(data.revenue_processed || 0);
+        const revRisk = parseFloat(data.revenue_at_risk || 0);
+        const potRec = parseFloat(data.potentially_recoverable || 0);
+        const recRev = parseFloat(data.recovered_revenue || 0);
+        const recRate = parseFloat(data.recovery_rate || 0);
+
+        document.getElementById('ov-revenue-processed').textContent = `₹${revProc.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('ov-revenue-at-risk').textContent = `₹${revRisk.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('ov-potentially-recoverable').textContent = `₹${potRec.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('ov-recovered-revenue').textContent = `₹${recRev.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('ov-recovery-rate').textContent = `${recRate.toFixed(1)}%`;
 
         renderOverviewCharts(data);
       } catch (err) {
@@ -1843,19 +2322,45 @@
       const leakCtx = document.getElementById('chart-leakage-breakdown')?.getContext('2d');
       if (leakCtx) {
         if (chartLeakage) chartLeakage.destroy();
+        const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#06b6d4', '#eab308'];
         chartLeakage = new Chart(leakCtx, {
           type: 'doughnut',
           data: {
             labels: data.leakage_breakdown.map(b => b.category),
             datasets: [{
               data: data.leakage_breakdown.map(b => b.amount),
-              backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899']
+              backgroundColor: colors.slice(0, data.leakage_breakdown.length),
+              borderColor: '#0d121f',
+              borderWidth: 2,
+              hoverOffset: 6
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
+            cutout: '66%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: '#94a3b8',
+                  font: { family: 'Inter', size: 12 },
+                  padding: 12,
+                  usePointStyle: true,
+                  pointStyle: 'circle'
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const val = context.raw || 0;
+                    const item = data.leakage_breakdown[context.dataIndex];
+                    const pct = item ? item.percentage : 0;
+                    return ` ₹${val.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${pct}%)`;
+                  }
+                }
+              }
+            }
           }
         });
       }
@@ -1894,7 +2399,7 @@
         const res = await fetch(`/api/v1/revenue-leaks?merchant_id=${activeMerchantId}`);
         if (!res.ok) throw new Error('Failed to load leaks');
         const data = await res.json();
-        rawLeaks = data.items || [];
+        rawLeaks = Array.isArray(data) ? data : (data.items || []);
         document.getElementById('badge-leaks-count').textContent = rawLeaks.length;
         renderLeaks();
       } catch (err) {
@@ -2239,6 +2744,8 @@
     }
 
     // 7. Audit Trail Loader
+    window.currentAuditEventsMap = {};
+
     async function loadAuditTrail() {
       if (!activeMerchantId) return;
       const tbody = document.getElementById('audit-tbody');
@@ -2254,25 +2761,35 @@
         const data = await res.json();
         const events = data.items || [];
 
+        window.currentAuditEventsMap = {};
+        events.forEach(e => {
+          if (e.id) window.currentAuditEventsMap[e.id] = e;
+        });
+
         const filtered = events.filter(e => 
-          !q || e.summary.toLowerCase().includes(q) || (e.action_id || '').toLowerCase().includes(q)
+          !q || e.summary.toLowerCase().includes(q) || (e.action_id || '').toLowerCase().includes(q) || (e.event_type || '').toLowerCase().includes(q)
         );
 
         if (filtered.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 30px;">No audit records found.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 30px;">No audit records found.</td></tr>`;
           return;
         }
 
         tbody.innerHTML = filtered.map(e => {
-          const sBadge = e.status === 'SUCCESS' ? 'badge-success' : (e.status === 'FAILED' ? 'badge-danger' : 'badge-subtle');
+          const sBadge = e.status === 'SUCCESS' ? 'badge-success' : (e.status === 'FAILED' ? 'badge-danger' : (e.status === 'WARNING' ? 'badge-warning' : 'badge-subtle'));
           return `
-            <tr>
+            <tr class="clickable-row" onclick="openAuditDetailModal('${e.id}')" title="Click to inspect audit event details">
               <td style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted);">${e.timestamp ? e.timestamp.slice(0, 19).replace('T', ' ') : '-'}</td>
               <td><strong>${e.event_type.replace(/_/g, ' ').toUpperCase()}</strong></td>
               <td><span class="badge badge-info">${e.actor}</span></td>
               <td><span class="badge ${sBadge}">${e.status}</span></td>
               <td style="max-width: 320px;">${e.summary}</td>
               <td class="mono">${e.action_id ? e.action_id.slice(0, 8) : '-'}</td>
+              <td>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openAuditDetailModal('${e.id}')" style="padding: 3px 8px; font-size: 0.75rem; gap: 4px;">
+                  <span>🔍</span> Details
+                </button>
+              </td>
             </tr>
           `;
         }).join('');
@@ -2281,7 +2798,214 @@
       }
     }
 
-    // 8. ROI Loader
+    function openAuditDetailModal(eventId) {
+      const e = window.currentAuditEventsMap[eventId];
+      if (!e) return;
+
+      document.getElementById('adm-title').textContent = (e.event_type || 'AUDIT_EVENT').replace(/_/g, ' ').toUpperCase();
+      document.getElementById('adm-timestamp').textContent = e.timestamp ? `${e.timestamp.replace('T', ' ').slice(0, 19)} UTC` : '-';
+
+      const sBadge = document.getElementById('adm-status-badge');
+      sBadge.textContent = e.status || 'UNKNOWN';
+      sBadge.className = 'badge ' + (e.status === 'SUCCESS' ? 'badge-success' : (e.status === 'FAILED' ? 'badge-danger' : (e.status === 'WARNING' ? 'badge-warning' : 'badge-subtle')));
+
+      const aBadge = document.getElementById('adm-actor-badge');
+      aBadge.textContent = e.actor || 'SYSTEM';
+      aBadge.className = 'badge badge-info';
+
+      document.getElementById('adm-summary').textContent = e.summary || 'No summary recorded.';
+      document.getElementById('adm-event-id').textContent = e.id || '-';
+      document.getElementById('adm-action-id').textContent = e.action_id || 'None';
+      document.getElementById('adm-opp-id').textContent = e.opportunity_id || 'None';
+      document.getElementById('adm-tx-id').textContent = e.transaction_id || 'None';
+
+      const metaStr = JSON.stringify(e.metadata || {}, null, 2);
+      document.getElementById('adm-metadata-json').textContent = metaStr;
+
+      const linkEl = document.getElementById('adm-timeline-link');
+      if (e.action_id) {
+        linkEl.href = `/audit?action=${encodeURIComponent(e.action_id)}`;
+        linkEl.style.display = 'inline-flex';
+      } else {
+        linkEl.href = `/audit`;
+        linkEl.style.display = 'inline-flex';
+      }
+
+      document.getElementById('audit-detail-modal').classList.add('open');
+    }
+
+    function closeAuditDetailModal() {
+      document.getElementById('audit-detail-modal').classList.remove('open');
+    }
+
+    function copyAuditMetadata() {
+      const text = document.getElementById('adm-metadata-json').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Metadata JSON copied to clipboard!');
+      }).catch(() => {
+        // Fallback
+      });
+    }
+
+    // Drawer Tab Switching
+    function switchDrawerTab(tabName) {
+      document.querySelectorAll('.drawer-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.drawer-pane').forEach(p => p.classList.remove('active'));
+      const btn = document.getElementById(`btn-tab-${tabName}`);
+      const pane = document.getElementById(`pane-${tabName}`);
+      if (btn) btn.classList.add('active');
+      if (pane) pane.classList.add('active');
+    }
+
+    async function openInvestigationDrawer(oppId) {
+      selectedOppForDrawer = rawOpportunities.find(o => o.id === oppId);
+      if (!selectedOppForDrawer) return;
+
+      switchDrawerTab('telemetry');
+
+      const o = selectedOppForDrawer;
+      document.getElementById('drawer-opp-id').textContent = `ID: ${o.id}`;
+      document.getElementById('drawer-customer').textContent = o.customer_name || 'Valued Customer';
+      document.getElementById('drawer-amount').textContent = `₹${parseFloat(o.gross_value_affected).toLocaleString('en-IN')}`;
+      document.getElementById('drawer-failure').textContent = o.failure_reason || 'Gateway timeout response';
+      document.getElementById('drawer-priority').textContent = o.priority || 'HIGH';
+      document.getElementById('drawer-prob').textContent = `${(parseFloat(o.recovery_probability) * 100).toFixed(0)}%`;
+      document.getElementById('drawer-exp-val').textContent = `₹${parseFloat(o.expected_recovered_value).toLocaleString('en-IN')}`;
+
+      const drawer = document.getElementById('investigation-drawer');
+      drawer.classList.add('open');
+
+      try {
+        const res = await fetch(`/api/v1/recovery-opportunities/${oppId}/explainability`);
+        if (res.ok) {
+          const exp = await res.json();
+
+          if (exp.policy_explanation) {
+            const verdictEl = document.getElementById('drawer-policy-verdict');
+            verdictEl.textContent = exp.policy_explanation.verdict;
+            if (exp.policy_explanation.verdict === 'ALLOW') verdictEl.style.color = 'var(--success)';
+            else if (exp.policy_explanation.verdict === 'DENY') verdictEl.style.color = 'var(--danger)';
+            else verdictEl.style.color = '#f59e0b';
+
+            document.getElementById('drawer-policy-rule').textContent = exp.policy_explanation.matched_rule;
+            document.getElementById('drawer-approval-req').textContent = exp.policy_explanation.approval_required ? 'True (Human Gate Required)' : 'False (Autonomous)';
+          }
+
+          // Tab 2: 10 Diagnostic Q&As
+          const qnaList = document.getElementById('drawer-qna-list');
+          const qnaData = exp.diagnostic_qa || exp.diagnostic_answers || [];
+          if (qnaList && qnaData.length > 0) {
+            qnaList.innerHTML = qnaData.map((item, qIdx) => `
+              <div class="qna-card">
+                <div class="qna-card-question">
+                  <span>${qIdx + 1}. ${item.question}</span>
+                  <span class="badge badge-info" style="font-size: 0.65rem;">
+                    DIAGNOSTIC
+                  </span>
+                </div>
+                <div class="qna-card-answer">${item.answer}</div>
+                ${item.evidence && Object.keys(item.evidence).length > 0 ? `
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; margin-top: 4px;">
+                    ${JSON.stringify(item.evidence)}
+                  </div>
+                ` : ''}
+              </div>
+            `).join('');
+          }
+
+          // Tab 3: AI Forensic Diagnosis & Deterministic Policy Constraints
+          if (exp.ai_explanation) {
+            document.getElementById('drawer-ai-problem').textContent = exp.ai_explanation.problem;
+            document.getElementById('drawer-ai-diagnosis').textContent = exp.ai_explanation.diagnosis;
+            document.getElementById('drawer-ai-rec').textContent = (exp.ai_explanation.recommendation || '').toUpperCase();
+            document.getElementById('drawer-ai-conf').textContent = `${(exp.ai_explanation.confidence * 100).toFixed(0)}%`;
+          }
+
+          if (exp.policy_explanation) {
+            document.getElementById('drawer-policy-evaluated').textContent = exp.policy_explanation.rule_matched || 'Rule 1: Permitted recovery action';
+            document.getElementById('drawer-policy-cap').textContent = exp.policy_explanation.threshold || '₹5,00,000.00';
+            document.getElementById('drawer-policy-retries').textContent = `Max ${exp.policy_explanation.retry_count || 3} attempts`;
+            document.getElementById('drawer-policy-cooldown').textContent = `${exp.policy_explanation.cooldown_seconds || 300}s (cooldown)`;
+            document.getElementById('drawer-policy-why').textContent = exp.policy_explanation.explanation || exp.policy_explanation.rationale || 'Autonomous execution permitted.';
+          }
+
+          // Tab 4: Chronological Timeline & Causal Audit Trace
+          const timelineList = document.getElementById('drawer-timeline-list');
+          const timelineData = exp.timeline || exp.chronological_timeline || [];
+          if (timelineList && timelineData.length > 0) {
+            timelineList.innerHTML = timelineData.map(t => {
+              let dotClass = 'verified';
+              if (t.stage === 'DETECTION') dotClass = 'leak';
+              else if (t.stage === 'PRIORITIZATION') dotClass = 'ml';
+              else if (t.stage === 'INVESTIGATION') dotClass = 'ai';
+              else if (t.stage === 'POLICY') dotClass = 'policy';
+              else if (t.stage === 'EXECUTION') dotClass = 'provider';
+              else if (t.stage === 'VERIFICATION') dotClass = 'webhook';
+
+              return `
+                <div class="timeline-node">
+                  <div class="timeline-dot ${dotClass}"></div>
+                  <div class="timeline-time">${new Date(t.timestamp).toLocaleTimeString()}</div>
+                  <div class="timeline-label">${t.title || t.event_type} (${t.stage || t.subsystem})</div>
+                  <div class="timeline-desc">${t.description}</div>
+                </div>
+              `;
+            }).join('');
+          }
+
+          const auditTraceBox = document.getElementById('drawer-audit-trace-box');
+          const traceData = exp.audit_trace || exp.causal_audit_trace;
+          if (auditTraceBox && traceData) {
+            auditTraceBox.innerHTML = Object.entries(traceData).map(([k, v]) => `
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 3px;">
+                <span style="color: var(--text-muted);">${k}:</span>
+                <span style="color: #93c5fd;">${v || '<span style="color: #64748b;">N/A</span>'}</span>
+              </div>
+            `).join('');
+          }
+        }
+      } catch (err) {
+        console.warn('Explainability fetch error:', err);
+      }
+    }
+
+    function closeDrawer() {
+      document.getElementById('investigation-drawer').classList.remove('open');
+    }
+
+    async function executeOpportunityFromDrawer() {
+      if (!selectedOppForDrawer) return;
+      const btn = document.getElementById('drawer-exec-btn');
+      btn.disabled = true;
+      btn.textContent = 'Executing via Razorpay...';
+
+      try {
+        const res = await fetch('/api/recovery/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            opportunity_id: selectedOppForDrawer.id,
+            action_type: 'create_payment_link',
+            amount: parseFloat(selectedOppForDrawer.gross_value_affected),
+            bypass_policy: false
+          })
+        });
+
+        if (!res.ok) throw new Error('Recovery execution failed');
+        const data = await res.json();
+        alert(`Success! Autonomous Recovery Dispatched via ${data.action.provider}.\nAction ID: ${data.action.id}\nStatus: ${data.action.status}`);
+        closeDrawer();
+        loadOpportunities();
+        loadRecoveryActions();
+      } catch (err) {
+        alert(`Execution error: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Execute Autonomous Recovery';
+      }
+    }
+
+    // 8. ROI Loader + Funnel & Business Report (Stage 8)
     async function loadRoi() {
       if (!activeMerchantId) return;
       try {
@@ -2289,21 +3013,135 @@
         if (!res.ok) throw new Error('Failed to load ROI analysis');
         const data = await res.json();
 
-        document.getElementById('roi-before-lost').textContent = `₹${data.before.revenue_lost.toLocaleString('en-IN')}`;
-        document.getElementById('roi-before-rec').textContent = `₹${data.before.revenue_recovered.toLocaleString('en-IN')}`;
-        document.getElementById('roi-before-tickets').textContent = `${data.before.manual_interventions} tickets`;
+        const bLost = parseFloat(data.before?.revenue_lost || 0);
+        const bRec = parseFloat(data.before?.revenue_recovered || 0);
+        const bTickets = data.before?.manual_interventions || 0;
 
-        document.getElementById('roi-after-rec').textContent = `₹${data.after.revenue_recovered.toLocaleString('en-IN')}`;
-        document.getElementById('roi-after-lost').textContent = `₹${data.after.revenue_lost.toLocaleString('en-IN')}`;
-        document.getElementById('roi-after-rate').textContent = `${data.after.recovery_rate}%`;
-        document.getElementById('roi-after-tickets').textContent = `${data.after.manual_interventions} VIP sign-offs`;
-        document.getElementById('roi-after-auto').textContent = `${data.after.automation_rate}%`;
+        const aRec = parseFloat(data.after?.revenue_recovered || 0);
+        const aLost = parseFloat(data.after?.revenue_lost || 0);
+        const aRate = parseFloat(data.after?.recovery_rate || 0);
+        const aTickets = data.after?.manual_interventions || 0;
+        const aAuto = parseFloat(data.after?.automation_rate || 0);
 
-        document.getElementById('roi-net-gain').textContent = `₹${data.net_financial_gain.toLocaleString('en-IN')}`;
-        document.getElementById('roi-hours-saved').textContent = `${data.hours_saved} hrs`;
-        document.getElementById('roi-multiplier').textContent = `${data.roi_multiplier}x`;
+        const netGain = parseFloat(data.net_financial_gain || 0);
+        const hrsSaved = parseFloat(data.hours_saved || 0);
+        const mult = parseFloat(data.roi_multiplier || 0);
+
+        document.getElementById('roi-before-lost').textContent = `₹${bLost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('roi-before-rec').textContent = `₹${bRec.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('roi-before-tickets').textContent = `${bTickets} tickets`;
+
+        document.getElementById('roi-after-rec').textContent = `₹${aRec.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('roi-after-lost').textContent = `₹${aLost.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('roi-after-rate').textContent = `${aRate.toFixed(1)}%`;
+        document.getElementById('roi-after-tickets').textContent = `${aTickets} (VIP Sign-offs)`;
+        document.getElementById('roi-after-auto').textContent = `${aAuto.toFixed(1)}%`;
+
+        document.getElementById('roi-net-gain').textContent = `₹${netGain.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('roi-hours-saved').textContent = `${hrsSaved.toFixed(1)} hrs`;
+        document.getElementById('roi-multiplier').textContent = `${mult.toFixed(1)}x`;
+
+        // 9-Stage Recovery Funnel
+        const funnelRes = await fetch(`/api/v1/analytics/funnel?merchant_id=${activeMerchantId}`);
+        if (funnelRes.ok) {
+          const funnelData = await funnelRes.json();
+          const yieldBadge = document.getElementById('funnel-overall-yield');
+          if (yieldBadge) {
+            const overallYield = parseFloat(funnelData.overall_recovery_yield || funnelData.overall_conversion_rate || 0);
+            yieldBadge.textContent = `${overallYield.toFixed(1)}%`;
+          }
+
+          const funnelContainer = document.getElementById('funnel-steps-container');
+          if (funnelContainer && funnelData.stages && funnelData.stages.length > 0) {
+            funnelContainer.innerHTML = funnelData.stages.map(stage => {
+              const num = stage.stage_number || 1;
+              const name = stage.stage_name || '';
+              const count = stage.count || 0;
+              const amt = parseFloat(stage.amount || stage.volume_inr || 0);
+              const convPrev = parseFloat(stage.conversion_from_previous || stage.conversion_rate || 0);
+              const convStart = parseFloat(stage.conversion_from_start || convPrev || 0);
+              const barWidth = Math.min(100, Math.max(3, convStart));
+              const badgeClass = convPrev >= 80 ? 'badge-success' : (convPrev >= 35 ? 'badge-info' : 'badge-warning');
+              const subtext = amt > 0 ? `₹${amt.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : (stage.description || '');
+
+              return `
+                <div class="funnel-step-row">
+                  <div>
+                    <span style="color: var(--primary); font-weight: 700; margin-right: 8px;">#${num}</span>
+                    <strong style="color: #fff; font-size: 0.85rem;">${name}</strong>
+                  </div>
+                  <div>
+                    <div class="funnel-bar-bg">
+                      <div class="funnel-bar-fill" style="width: ${barWidth}%;"></div>
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div class="mono" style="font-weight: 600; color: #fff;">${count.toLocaleString('en-IN')} events</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${subtext}</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <span class="badge ${badgeClass}">${convPrev.toFixed(1)}%</span>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        // Executive Business Impact Report (Leak categories & Latencies)
+        const reportRes = await fetch(`/api/v1/analytics/business-report?merchant_id=${activeMerchantId}`);
+        if (reportRes.ok) {
+          const reportData = await reportRes.json();
+
+          const catTbody = document.getElementById('leak-categories-tbody');
+          if (catTbody) {
+            const categories = reportData.leak_categories || [];
+            if (categories.length === 0) {
+              catTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 14px;">No leak categories identified.</td></tr>`;
+            } else {
+              catTbody.innerHTML = categories.map(c => {
+                const recRate = parseFloat(c.recovery_rate || 0);
+                const badgeClass = recRate >= 50 ? 'badge-success' : (recRate > 0 ? 'badge-info' : 'badge-warning');
+                const riskAmt = parseFloat(c.revenue_at_risk || 0);
+                const recAmt = parseFloat(c.actual_recovery || c.actual_recovered || 0);
+                return `
+                  <tr>
+                    <td><strong style="color: #fff;">${(c.category || 'Payment Failure').replace(/_/g, ' ').toUpperCase()}</strong></td>
+                    <td class="mono text-right">${c.count || 0}</td>
+                    <td class="mono text-right" style="color: var(--danger);">₹${riskAmt.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="mono text-right" style="color: var(--success); font-weight: 700;">₹${recAmt.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="text-right"><span class="badge ${badgeClass}">${recRate.toFixed(1)}%</span></td>
+                  </tr>
+                `;
+              }).join('');
+            }
+          }
+
+          const latTbody = document.getElementById('latencies-tbody');
+          const latList = reportData.latencies || reportData.latency_benchmarks || [];
+          if (latTbody) {
+            if (latList.length === 0) {
+              latTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 14px;">No latency metrics recorded.</td></tr>`;
+            } else {
+              latTbody.innerHTML = latList.map(l => {
+                const name = l.step_name || l.subsystem || 'Pipeline Stage';
+                const avg = parseFloat(l.avg_ms || 0).toFixed(1);
+                const med = parseFloat(l.median_ms || 0).toFixed(1);
+                const p95 = parseFloat(l.p95_ms || 0).toFixed(1);
+                return `
+                  <tr>
+                    <td><strong style="color: #fff;">${name}</strong></td>
+                    <td class="mono text-right">${avg} ms</td>
+                    <td class="mono text-right">${med} ms</td>
+                    <td class="mono text-right" style="color: ${parseFloat(p95) > 100 ? '#f59e0b' : 'var(--success)'};">${p95} ms</td>
+                  </tr>
+                `;
+              }).join('');
+            }
+          }
+        }
       } catch (err) {
-        console.error(err);
+        console.error('ROI load error:', err);
       }
     }
 
@@ -2344,8 +3182,44 @@
     // =========================================================================
     // DEMO SCENARIO ENGINE FRONTEND CONTROLLER
     // =========================================================================
-    let selectedDemoScenarioId = 'payment_degradation';
+    let selectedDemoScenarioId = 'golden_scenario';
     const demoCatalog = {
+      'golden_scenario': {
+        title: '★ CANONICAL GOLDEN DEMO: Full Pipeline E2E Recovery',
+        desc: 'Transaction (₹9,500) → Leak → ML Prioritization (91%) → AI Forensic Agent → Policy ALLOW → Razorpay TEST Link → Webhook → Provider Reconciliation → Verified ₹9,500 Recovery (632x ROI).'
+      },
+      'scenario_a': {
+        title: 'Scenario A: Autonomous Payment Link Recovery',
+        desc: 'UPI drop-off (₹4,999) → ML 88% → Policy ALLOW → Razorpay link generated & captured → Provider reconciled → ₹4,999 recovered.'
+      },
+      'scenario_b': {
+        title: 'Scenario B: Deterministic Policy Denied Fraud',
+        desc: 'High-risk fraud candidate (₹6,50,000) → Exceeds single-action ₹500k cap → Blocked by Rule 5 → Provider NEVER called (Zero financial risk).'
+      },
+      'scenario_c': {
+        title: 'Scenario C: High-Value Human Approval Gate',
+        desc: 'B2B order (₹85,000) → Exceeds ₹15k autonomous cap → Placed in Approval Required gate → Merchant operator sign-off → Verified ₹85,000.'
+      },
+      'scenario_d': {
+        title: 'Scenario D: Provider Timeout & Graceful Rail Fallback',
+        desc: 'Primary recovery encounters 504 Gateway Timeout → Handled gracefully without false recovery → Alternative rail dispatched → ₹3,499 recovered.'
+      },
+      'scenario_e': {
+        title: 'Scenario E: Webhook Replay & Cryptographic Idempotency',
+        desc: 'Replayed webhook capture delivery → Cryptographic HMAC match & idempotency check → Zero duplicate balance credited.'
+      },
+      'scenario_f': {
+        title: 'Scenario F: Amount Discrepancy Reconciliation Refusal',
+        desc: 'Mismatch: Expected ₹5,000 vs Provider ₹3,000 → Verification refused → Marked RECONCILIATION_REQUIRED.'
+      },
+      'scenario_g': {
+        title: 'Scenario G: Non-Recoverable False Positive Suppression',
+        desc: 'Permanently closed bank account → ML score 8% (< 15% threshold) → Outreach suppressed → Saved merchant costs.'
+      },
+      'scenario_h': {
+        title: 'Scenario H: High-Value Enterprise Mandate Recovery',
+        desc: 'Recurring mandate debit failure (₹45,000/mo) → 1-click update link → Mandate restored → ₹5.4L ARR protected.'
+      },
       'payment_degradation': {
         title: 'Scenario 1: Payment Degradation Anomaly',
         desc: 'Detect anomaly → Bank/method/time cluster (HDFC UPI Android 18:00-22:00) → Calculate RAR → Safe recovery → Show recovered revenue.'

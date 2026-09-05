@@ -1,3 +1,11 @@
+"""
+RevenueOS ML Training Pipeline
+Executes end-to-end reproducible training workflow:
+Dataset Generation -> Quality Check -> 3-Way Temporal Split -> Naive Baseline ->
+Model 1 Training -> Validation Calibration -> Test Evaluation -> Model 2 Ranking ->
+Model Registry & Persistence.
+"""
+
 import os
 import math
 import json
@@ -5,161 +13,203 @@ import logging
 import random
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional, List
+from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 import joblib
 import numpy as np
 from sqlalchemy.orm import Session
 
 from app.models import Payment, Customer, PaymentAttempt, PaymentStatus
-from app.ml.pipeline import (
-    PaymentFeatureExtractor,
-    TemporalDataSplitter,
-)
+from app.ml.features.feature_builder import FeatureBuilder
+from app.ml.pipeline import TemporalDataSplitter
+from app.ml.dataset import DatasetGenerator, DatasetValidator, TrainingSample
 from app.ml.models import (
+    HistoricalMeanBaseline,
     PaymentRecoveryModel,
     RevenueAnomalyDetector,
     RecoveryOpportunityRanker,
 )
+from app.ml.registry import registry, ARTIFACTS_DIR
 
 logger = logging.getLogger(__name__)
 
-ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
 RECOVERY_MODEL_PATH = ARTIFACTS_DIR / "recovery_probability_v1.joblib"
 ANOMALY_MODEL_PATH = ARTIFACTS_DIR / "anomaly_detector_v1.joblib"
 METRICS_PATH = ARTIFACTS_DIR / "metrics_evaluation.json"
 
+
 class MLTrainingPipeline:
     """
-    End-to-end ML Training Pipeline:
-    Raw Data -> Feature Extraction -> Temporal Split -> Training -> Evaluation -> Persistence
+    End-to-end ML Training & Evaluation Pipeline for Stage 4.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, random_seed: int = 42):
         self.db = db
+        self.random_seed = random_seed
 
     def train_all(self) -> Dict[str, Any]:
         """
-        Execute full training workflow for Model 1 & Model 2,
-        evaluating real metrics and persisting artifacts.
+        Execute full training workflow:
+        1. Generate training samples & validate data quality
+        2. Strict 3-way temporal split (60% Train / 20% Val / 20% Test)
+        3. Train & evaluate Naive Historical Mean Baseline on test set
+        4. Train Logistic Regression benchmark model
+        5. Train HistGradientBoosting production model
+        6. Calibrate production model on Validation set
+        7. Evaluate production model on untouched Test set (ROC-AUC, PR-AUC, F1, Brier, Top-K)
+        8. Evaluate Model 2 opportunity ranking against business baselines
+        9. Register active model in ModelRegistry and persist artifacts
         """
         ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+        t_start = datetime.now(timezone.utc)
 
-        # 1. Fetch raw payments
-        payments = self.db.query(Payment).all()
-        if not payments or len(payments) < 50:
-            logger.info("Insufficient payment data in DB for full ML training. Generating training corpus...")
-            from app.synthetic.generator import SyntheticDataGenerator
-            gen = SyntheticDataGenerator(seed=42)
-            gen.generate_all(self.db)
-            payments = self.db.query(Payment).all()
+        # 1. Generate dataset & quality check
+        generator = DatasetGenerator(db=self.db, seed=self.random_seed)
+        samples, quality_report = generator.generate_dataset_from_db(min_samples=120)
 
-        # 2. Extract features
-        records = PaymentFeatureExtractor.build_dataset_from_payments(payments)
-        
-        # Filter to rows with defined targets (failed or recovered transactions)
-        train_test_pool = [r for r in records if r.get("target") is not None]
+        # 2. Strict 3-way temporal split
+        train_samples, val_samples, test_samples, split_meta = TemporalDataSplitter.split_train_val_test(
+            records=samples,
+            time_key="prediction_time",
+            train_ratio=0.60,
+            val_ratio=0.20,
+        )
 
-        # Ensure balanced representation for evaluation if dataset is small
-        targets = [r["target"] for r in train_test_pool]
-        if len(train_test_pool) < 30 or len(set(targets)) < 2:
-            logger.info("Augmenting training set with standard payment retry samples...")
-            synth_rows = self._generate_synthetic_retry_rows()
-            train_test_pool.extend(synth_rows)
+        X_train = [s.features for s in train_samples]
+        y_train = np.array([s.label for s in train_samples], dtype=int)
 
-        # 3. Temporal Train / Test Split (Strict Chronological Ordering)
-        train_records, test_records = TemporalDataSplitter.split(train_test_pool, time_key="created_at", train_ratio=0.75)
+        X_val = [s.features for s in val_samples]
+        y_val = np.array([s.label for s in val_samples], dtype=int)
 
-        y_train = np.array([r["target"] for r in train_records], dtype=int)
-        y_test = np.array([r["target"] for r in test_records], dtype=int)
+        X_test = [s.features for s in test_samples]
+        y_test = np.array([s.label for s in test_samples], dtype=int)
 
-        # Ensure both classes exist in y_train and y_test
-        if len(set(y_train)) < 2 or len(set(y_test)) < 2:
-            from sklearn.model_selection import train_test_split
-            train_records, test_records = train_test_split(
-                train_test_pool,
-                test_size=0.25,
-                random_state=42,
-                stratify=[r["target"] for r in train_test_pool]
-            )
-            y_train = np.array([r["target"] for r in train_records], dtype=int)
-            y_test = np.array([r["target"] for r in test_records], dtype=int)
+        # 3. Naive Baseline (Historical Mean Recovery Rate)
+        naive_baseline = HistoricalMeanBaseline()
+        naive_baseline.fit(y_train)
+        naive_metrics = naive_baseline.evaluate(X_test, y_test)
 
-        # 4. Train Baseline Model (Logistic Regression)
-        baseline_model = PaymentRecoveryModel(use_baseline=True)
-        baseline_model.fit(train_records, y_train)
-        baseline_metrics = baseline_model.evaluate(test_records, y_test)
+        # 4. Logistic Regression Benchmark (Model 1 Baseline)
+        logreg_model = PaymentRecoveryModel(use_baseline=True, random_seed=self.random_seed)
+        logreg_model.fit(X_train, y_train)
+        logreg_metrics = logreg_model.evaluate(X_test, y_test)
 
-        # 5. Train Improved Production Model (HistGradientBoosting)
-        production_model = PaymentRecoveryModel(use_baseline=False)
-        production_model.fit(train_records, y_train)
-        production_metrics = production_model.evaluate(test_records, y_test)
+        # 5. Production Model (HistGradientBoosting)
+        prod_model = PaymentRecoveryModel(use_baseline=False, random_seed=self.random_seed)
+        prod_model.fit(X_train, y_train)
+        uncalibrated_test_metrics = prod_model.evaluate(X_test, y_test)
 
-        # 6. Train Model 2 (Revenue Anomaly Detector)
+        # 6. Probability Calibration on Validation Set
+        prod_model.calibrate(X_val, y_val)
+        calibrated_test_metrics = prod_model.evaluate(X_test, y_test)
+
+        # 7. Model 2: Opportunity Ranking Evaluation
+        # Build test opportunities using test samples
+        test_opportunities = []
+        for s in test_samples:
+            gross = Decimal(str(s.features.get("transaction_amount", 1000.0)))
+            pot_rec = gross * Decimal("0.85")
+            p_rec, conf = prod_model.predict_single(s.features)
+            # Use true label as actual recovery for evaluation
+            act_recovered = pot_rec if s.label == 1 else Decimal("0.00")
+
+            test_opportunities.append({
+                "id": s.sample_id,
+                "gross_amount": gross,
+                "recovery_probability": p_rec,
+                "confidence": conf,
+                "actual_recovery": act_recovered,
+                "customer_ltv": s.features.get("customer_lifetime_value_before_prediction", 0.0),
+                "age_hours": s.features.get("days_since_transaction", 0.0) * 24.0,
+                "risk": "low",
+            })
+
+        ranking_report = RecoveryOpportunityRanker.evaluate_ranking(test_opportunities)
+
+        # 8. Auxiliary Model: Revenue Anomaly Detector
         anomaly_detector = RevenueAnomalyDetector(contamination=0.05)
-        window_records = self._build_anomaly_window_features(payments)
+        window_records = self._build_anomaly_window_features()
         anomaly_detector.fit(window_records)
 
-        # 7. Persist Artifacts
-        joblib.dump(production_model, RECOVERY_MODEL_PATH)
+        # 9. Register & Persist Artifacts
+        t_end = datetime.now(timezone.utc)
+        meta_dict = {
+            "algorithm": "HistGradientBoostingClassifier(class_weight='balanced')",
+            "feature_version": prod_model.FEATURE_VERSION,
+            "dataset_version": generator.DATASET_VERSION,
+            "training_start": split_meta["train_range"][0],
+            "training_end": split_meta["train_range"][1],
+            "train_samples": len(train_samples),
+            "val_samples": len(val_samples),
+            "test_samples": len(test_samples),
+            "calibration_method": "sigmoid_platt_scaling" if prod_model.is_calibrated else "none",
+            "metrics": calibrated_test_metrics,
+        }
+
+        registry.register_model(
+            model_name=prod_model.MODEL_NAME,
+            model_version=prod_model.MODEL_VERSION,
+            model_artifact=prod_model,
+            metadata=meta_dict,
+            is_active=True,
+        )
+
+        joblib.dump(prod_model, RECOVERY_MODEL_PATH)
         joblib.dump(anomaly_detector, ANOMALY_MODEL_PATH)
 
+        # 10. Comprehensive Summary
         evaluation_summary = {
-            "training_timestamp": datetime.now(timezone.utc).isoformat(),
-            "train_samples": len(train_records),
-            "test_samples": len(test_records),
+            "training_timestamp": t_end.isoformat(),
+            "dataset_quality": quality_report.to_dict(),
+            "temporal_split": split_meta,
             "baseline_model": {
+                "name": "HistoricalMeanBaseline",
+                "metrics": naive_metrics,
+            },
+            "logistic_regression_benchmark": {
                 "name": "LogisticRegression_Baseline",
-                "metrics": baseline_metrics
+                "metrics": logreg_metrics,
+            },
+            "production_model": {
+                "name": "HistGradientBoosting_Production",
+                "uncalibrated_metrics": uncalibrated_test_metrics,
+                "calibrated_metrics": calibrated_test_metrics,
+                "metrics": calibrated_test_metrics,
             },
             "improved_model": {
                 "name": "HistGradientBoosting_Production",
-                "metrics": production_metrics
+                "metrics": calibrated_test_metrics,
             },
             "comparison": {
-                "roc_auc_delta": round(production_metrics["roc_auc"] - baseline_metrics["roc_auc"], 4),
-                "f1_delta": round(production_metrics["f1"] - baseline_metrics["f1"], 4),
-                "precision_delta": round(production_metrics["precision"] - baseline_metrics["precision"], 4),
-                "recall_delta": round(production_metrics["recall"] - baseline_metrics["recall"], 4),
-            }
+                "roc_auc_lift": round(calibrated_test_metrics["roc_auc"] - naive_metrics["roc_auc"], 4),
+                "f1_lift": round(calibrated_test_metrics["f1"] - naive_metrics["f1"], 4),
+                "brier_reduction": round(naive_metrics["brier_score"] - calibrated_test_metrics["brier_score"], 4),
+            },
+            "calibration_comparison": {
+                "uncalibrated_brier": uncalibrated_test_metrics["brier_score"],
+                "calibrated_brier": calibrated_test_metrics["brier_score"],
+                "brier_improvement": round(uncalibrated_test_metrics["brier_score"] - calibrated_test_metrics["brier_score"], 4),
+            },
+            "model_lift_vs_naive": {
+                "roc_auc_lift": round(calibrated_test_metrics["roc_auc"] - naive_metrics["roc_auc"], 4),
+                "f1_lift": round(calibrated_test_metrics["f1"] - naive_metrics["f1"], 4),
+                "brier_reduction": round(naive_metrics["brier_score"] - calibrated_test_metrics["brier_score"], 4),
+            },
+            "model_2_ranking_evaluation": ranking_report,
         }
 
         with open(METRICS_PATH, "w") as f:
             json.dump(evaluation_summary, f, indent=2)
 
-        logger.info("ML Models trained and persisted successfully.")
+        logger.info("ML Models trained, calibrated, evaluated, and persisted successfully.")
         return evaluation_summary
 
-    def _generate_synthetic_retry_rows(self) -> List[Dict[str, Any]]:
-        """Helper to create realistic retry observations for bootstrapping."""
+    def _build_anomaly_window_features(self) -> List[Dict[str, float]]:
+        """Create time-window feature aggregations for auxiliary Model 2."""
         rows = []
-        rng = random.Random(42)
-        base_time = datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc)
-        for i in range(120):
-            is_recovered = (i % 3 != 0)  # 66% recovery rate
-            amt = float(rng.uniform(500.0, 25000.0))
-            rows.append({
-                "amount": amt,
-                "log_amount": math.log1p(amt),
-                "attempt_count": rng.choice([1, 2, 3]),
-                "customer_ltv": float(rng.uniform(1000.0, 50000.0)),
-                "hour_of_day": rng.choice(range(24)),
-                "day_of_week": rng.choice(range(7)),
-                "payment_method": rng.choice(["upi", "card", "netbanking", "wallet"]),
-                "bank": rng.choice(["HDFC", "ICICI", "SBI", "AXIS", "KOTAK"]),
-                "device_type": rng.choice(["android", "ios", "desktop"]),
-                "customer_risk_segment": rng.choice(["low", "medium", "high"]),
-                "error_code_category": rng.choice(["TIMEOUT", "INSUFFICIENT_FUNDS", "AUTH_FAILURE"]),
-                "created_at": base_time + timedelta(hours=i * 3),
-                "target": 1 if is_recovered else 0,
-            })
-        return rows
-
-    def _build_anomaly_window_features(self, payments: list) -> List[Dict[str, float]]:
-        """Create time-window feature aggregations for Model 2."""
-        rows = []
-        rng = random.Random(42)
-        for i in range(40):
-            vol = rng.randint(50, 200)
+        rng = random.Random(self.random_seed)
+        for _ in range(50):
+            vol = rng.randint(50, 250)
             fail_rate = rng.uniform(0.02, 0.05)
             gross = rng.uniform(100000.0, 500000.0)
             rar = gross * fail_rate * 0.85
@@ -167,13 +217,15 @@ class MLTrainingPipeline:
                 "volume": float(vol),
                 "failure_rate": float(fail_rate),
                 "gross_amount": float(gross),
-                "revenue_at_risk": float(rar)
+                "revenue_at_risk": float(rar),
             })
         return rows
 
-# Model Registry / Singleton Cache
+
+# Singleton Cache Helpers
 _LOADED_RECOVERY_MODEL: Optional[PaymentRecoveryModel] = None
 _LOADED_ANOMALY_DETECTOR: Optional[RevenueAnomalyDetector] = None
+
 
 def get_recovery_model(db: Optional[Session] = None) -> PaymentRecoveryModel:
     """Retrieve or initialize the active Payment Recovery Model."""
@@ -181,39 +233,36 @@ def get_recovery_model(db: Optional[Session] = None) -> PaymentRecoveryModel:
     if _LOADED_RECOVERY_MODEL is not None and _LOADED_RECOVERY_MODEL.is_fitted:
         return _LOADED_RECOVERY_MODEL
 
+    model = registry.load_active_model(PaymentRecoveryModel.MODEL_NAME)
+    if model is not None and getattr(model, "is_fitted", False):
+        _LOADED_RECOVERY_MODEL = model
+        return _LOADED_RECOVERY_MODEL
+
     if RECOVERY_MODEL_PATH.exists():
         try:
             _LOADED_RECOVERY_MODEL = joblib.load(RECOVERY_MODEL_PATH)
             return _LOADED_RECOVERY_MODEL
         except Exception as e:
-            logger.warning(f"Failed to load persisted recovery model: {e}. Re-training...")
+            logger.warning(f"Failed to load persisted recovery model: {e}")
 
     if db:
         pipeline = MLTrainingPipeline(db)
         pipeline.train_all()
-        if RECOVERY_MODEL_PATH.exists():
-            _LOADED_RECOVERY_MODEL = joblib.load(RECOVERY_MODEL_PATH)
+        model = registry.load_active_model(PaymentRecoveryModel.MODEL_NAME)
+        if model is not None:
+            _LOADED_RECOVERY_MODEL = model
             return _LOADED_RECOVERY_MODEL
 
-    # Fallback to in-memory trained baseline if no artifact exists
-    model = PaymentRecoveryModel(use_baseline=False)
+    # Fallback in-memory model
+    fallback = PaymentRecoveryModel(use_baseline=False)
     sample_records = [
-        {
-            "log_amount": 7.5, "attempt_count": 1, "customer_ltv": 5000.0,
-            "hour_of_day": 14, "day_of_week": 2, "payment_method": "upi",
-            "bank": "HDFC", "device_type": "android", "customer_risk_segment": "low",
-            "error_code_category": "TIMEOUT"
-        },
-        {
-            "log_amount": 9.5, "attempt_count": 3, "customer_ltv": 1000.0,
-            "hour_of_day": 20, "day_of_week": 5, "payment_method": "card",
-            "bank": "SBI", "device_type": "desktop", "customer_risk_segment": "high",
-            "error_code_category": "INSUFFICIENT_FUNDS"
-        }
+        {"transaction_amount": 1200.0, "log_amount": 7.0, "payment_method": "upi", "failure_reason": "TIMEOUT", "is_cold_start": 0},
+        {"transaction_amount": 15000.0, "log_amount": 9.6, "payment_method": "card", "failure_reason": "INSUFFICIENT_FUNDS", "is_cold_start": 1},
     ]
-    model.fit(sample_records, np.array([1, 0]))
-    _LOADED_RECOVERY_MODEL = model
+    fallback.fit(sample_records, np.array([1, 0]))
+    _LOADED_RECOVERY_MODEL = fallback
     return _LOADED_RECOVERY_MODEL
+
 
 def get_anomaly_detector(db: Optional[Session] = None) -> RevenueAnomalyDetector:
     """Retrieve or initialize the active Revenue Anomaly Detector."""

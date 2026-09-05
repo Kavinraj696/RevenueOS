@@ -29,9 +29,11 @@ Threat model:
               and silently acked without re-processing.
 """
 
+import hashlib
+import hmac
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("revenueos.security")
 
@@ -42,17 +44,19 @@ logger = logging.getLogger("revenueos.security")
 # Patterns that indicate an attempt to override the system prompt or policy.
 PROMPT_INJECTION_PATTERNS = [
     # Direct override phrases
-    r"ignore\s+(your|all|the)\s+(instructions?|policies|rules|system|policy)",
-    r"disregard\s+(your|all|the)\s+(instructions?|policies|rules|system|policy)",
+    r"ignore\s+(all\s+previous|previous|your|all|the)?\s*(instructions?|policies|rules|system|policy)",
+    r"disregard\s+(all\s+previous|previous|your|all|the)?\s*(instructions?|policies|rules|system|policy)",
     r"forget\s+everything\s+you\s+(were|have\s+been)\s+told",
     r"you\s+are\s+now\s+a\s+different\s+AI",
     r"new\s+(system|master)\s+prompt",
-    r"override\s+(the\s+)?(policy|restriction|limit)",
+    r"override\s+(all\s+)?(the\s+)?(policy|restriction|limit|rules)",
+    r"system\s+override",
     r"bypass\s+(the\s+)?(policy|restriction|guard|limit|approval|check)",
     r"bypass\s+(policy|restriction|guard|limit|approval|check)",
     # Financial escalation via prompt
     r"create\s+(a\s+)?payment\s+link\s+for",  # any "create payment link for" is suspicious
     r"transfer\s+[\d,]+\s*(inr|rupees?|rs)\s+immediately",
+    r"refund\s+.*immediately",
     r"execute\s+recovery\s+without\s+(policy|approval|check)",
     r"skip\s+(the\s+)?(policy|approval|human)\s+(engine|check|review)",
     # Common DAN / jailbreak patterns
@@ -115,22 +119,47 @@ def sanitize_user_input(user_input: str, max_length: int = 2000) -> str:
 
 AGENT_ALLOWED_TOOLS: frozenset = frozenset([
     "get_revenue_leaks",
+    "get_revenue_leak",
+    "get_leak_evidence",
     "get_failed_transactions",
-    "get_recovery_opportunities",
+    "get_transaction",
+    "search_transactions",
+    "get_customer_history",
     "get_customer_risk_profile",
+    "get_payment_attempts",
+    "get_failure_analysis",
     "get_payment_pattern_analysis",
-    "get_merchant_summary",
+    "get_subscription",
     "get_subscription_health",
+    "get_merchant_summary",
+    "get_recovery_opportunities",
+    "get_recovery_opportunity",
+    "calculate_recovery_probability",
     "predict_recovery_probability",
+    "calculate_recovery_value",
+    "estimate_recoverable_revenue",
     "rank_recovery_opportunities",
+    "get_available_payment_methods",
     "get_checkout_abandonment_data",
     "get_bank_failure_rates",
     "get_recent_actions",
     "get_audit_trail",
     "get_system_metrics",
+    "get_policy",
     "get_policy_limits",
+    "request_policy_check",
+    "request_recovery_action",
+    "create_test_payment_link",
+    "create_test_subscription_link",
+    "send_recovery_notification",
+    "get_action_status",
+    "get_recovery_result",
+    "verify_recovery",
+    "verify_action_status",
+    "create_agent_report",
+    "write_audit_event",
+    "diagnose_root_cause",
     "get_anomaly_signals",
-    # Recommendation-only (does NOT execute)
     "recommend_action",
 ])
 
@@ -426,4 +455,221 @@ class RevenueOSSecurityAuditor:
         except PermissionError:
             return SecurityAuditResult("SEC-007", "Malicious prompt blocked by policy", True, "HIGH",
                                        "Injection detected AND create_payment_link blocked. Double defence confirmed.")
+
+
+# =========================================================================== #
+#  8. Stage 7 Production Security & Token Authentication
+# =========================================================================== #
+
+import base64
+import json
+import time
+import threading
+from datetime import datetime, timezone, timedelta
+from fastapi import HTTPException, status
+from app.config import settings
+
+
+def _b64_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
+
+
+def _b64_decode(data: str) -> bytes:
+    padding = 4 - (len(data) % 4)
+    if padding != 4:
+        data += "=" * padding
+    return base64.urlsafe_b64decode(data)
+
+
+def create_access_token(
+    data: Dict[str, Any],
+    expires_delta: Optional[timedelta] = None,
+    secret_key: Optional[str] = None
+) -> str:
+    """
+    Create a cryptographically signed HMAC-SHA256 bearer token.
+    Contains merchant_id, role, sub, and expiration timestamp.
+    """
+    to_encode = data.copy()
+    expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
+
+    to_encode["exp"] = int(expire.timestamp())
+    to_encode["iat"] = int(datetime.now(timezone.utc).timestamp())
+
+    header = {"alg": settings.JWT_ALGORITHM, "typ": "JWT"}
+    header_b64 = _b64_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    payload_b64 = _b64_encode(json.dumps(to_encode, separators=(",", ":")).encode("utf-8"))
+
+    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    key = (secret_key or settings.JWT_SECRET_KEY).encode("utf-8")
+    signature = hmac.new(key, signing_input, hashlib.sha256).digest()
+    sig_b64 = _b64_encode(signature)
+
+    return f"{header_b64}.{payload_b64}.{sig_b64}"
+
+
+def verify_access_token(
+    token: str,
+    secret_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Verify HMAC-SHA256 signature, format, and expiration of access token.
+    Raises HTTPException 401 if missing, invalid, malformed, or expired.
+    """
+    if not token or not isinstance(token, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or empty authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed authentication token: invalid segment count",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    header_b64, payload_b64, sig_b64 = parts
+
+    # Verify signature
+    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    key = (secret_key or settings.JWT_SECRET_KEY).encode("utf-8")
+    expected_sig = hmac.new(key, signing_input, hashlib.sha256).digest()
+
+    try:
+        provided_sig = _b64_decode(sig_b64)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed authentication token: invalid signature encoding",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token signature",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # Decode payload
+    try:
+        payload_bytes = _b64_decode(payload_b64)
+        payload = json.loads(payload_bytes.decode("utf-8"))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed authentication token payload",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # Check expiration
+    exp = payload.get("exp")
+    if not exp or not isinstance(exp, (int, float)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token: missing expiration claim",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    now_ts = datetime.now(timezone.utc).timestamp()
+    if now_ts >= exp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token has expired",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    return payload
+
+
+def verify_merchant_authorization(
+    claims: Dict[str, Any],
+    target_merchant_id: Any
+) -> None:
+    """
+    Enforce tenant authorization: User A cannot access Merchant B's resources.
+    Raises HTTPException 403 if claims merchant does not match target.
+    """
+    role = claims.get("role", "viewer").lower()
+    if role in ("superadmin", "system"):
+        return
+
+    claim_m_id = str(claims.get("merchant_id", "")).lower()
+    target_m_id = str(target_merchant_id).lower()
+
+    if not claim_m_id or claim_m_id != target_m_id:
+        logger.warning(
+            f"[SECURITY] Authorization denied: User merchant '{claim_m_id}' "
+            f"attempted cross-tenant access to merchant '{target_m_id}'."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Forbidden: Access denied to merchant tenant '{target_merchant_id}'"
+        )
+
+
+# =========================================================================== #
+#  9. Stage 7 In-Memory Sliding Window Rate Limiter
+# =========================================================================== #
+
+class SlidingWindowRateLimiter:
+    """
+    Thread-safe sliding-window rate limiter.
+    Limits requests per client (IP / token / merchant) within a moving time window.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._requests: Dict[str, List[float]] = {}
+
+    def is_allowed(
+        self,
+        client_id: str,
+        limit: int = 120,
+        window_seconds: int = 60
+    ) -> Tuple[bool, int]:
+        """
+        Check if request is permitted.
+        Returns (is_allowed, remaining_requests).
+        """
+        now = time.time()
+        window_start = now - window_seconds
+
+        with self._lock:
+            history = self._requests.get(client_id, [])
+            # Filter out timestamps outside window
+            valid_history = [t for t in history if t > window_start]
+
+            if len(valid_history) >= limit:
+                self._requests[client_id] = valid_history
+                return False, 0
+
+            valid_history.append(now)
+            self._requests[client_id] = valid_history
+            remaining = max(0, limit - len(valid_history))
+            return True, remaining
+
+    def reset(self) -> None:
+        """Reset all rate limiter tracking."""
+        with self._lock:
+            self._requests.clear()
+
+
+global_rate_limiter = SlidingWindowRateLimiter()
+
+# Standard Production Security Headers
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
+}
 

@@ -11,6 +11,7 @@ from app.models.customer import Customer
 from app.models.payment import Payment
 from app.models.recovery_opportunity import RecoveryOpportunity
 from app.models.agent_decision import AgentDecision
+from app.models.agent_run import AgentRun
 from app.models.policy_decision import PolicyDecision
 from app.models.recovery_action import RecoveryAction
 from app.models.enums import OpportunityStatus, ActionStatus, ActionType, PolicyAction
@@ -51,11 +52,34 @@ class AIRecoveryAgent:
             first_m = self.db.query(Merchant).first()
             m_id = first_m.id if first_m else uuid.uuid4()
 
+        causal_trace = f"trace_{uuid.uuid4().hex[:12]}"
+        trigger_val = "leak" if leak_id else ("opportunity" if opportunity_id else "auto")
+        trigger_id_val = str(leak_id or opportunity_id or transaction_id or "")
+
+        # Persist initial AgentRun record
+        agent_run = AgentRun(
+            id=uuid.uuid4(),
+            merchant_id=m_id,
+            trigger=trigger_val,
+            trigger_id=trigger_id_val,
+            current_state=AgentWorkflowStage.OBSERVE.value,
+            status="RUNNING",
+            started_at=datetime.now(timezone.utc),
+            model_version="recovery_probability_v1",
+            causal_trace_id=causal_trace,
+            execution_logs_json=[],
+            decision_summary={}
+        )
+        self.db.add(agent_run)
+        self.db.commit()
+
         state = AgentState(
             workflow_id=uuid.uuid4(),
+            agent_run_id=agent_run.id,
             merchant_id=m_id,
-            trigger_type="leak" if leak_id else ("opportunity" if opportunity_id else "auto"),
-            trigger_id=str(leak_id or opportunity_id or transaction_id or "")
+            trigger_type=trigger_val,
+            trigger_id=trigger_id_val,
+            causal_trace_id=causal_trace
         )
 
         try:
@@ -63,57 +87,79 @@ class AIRecoveryAgent:
             # 1. OBSERVE
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.OBSERVE)
+            agent_run.current_state = AgentWorkflowStage.OBSERVE.value
             self._stage_observe(state, leak_id, opportunity_id, transaction_id)
 
             # -----------------------------------------------------------------
             # 2. INVESTIGATE
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.INVESTIGATE)
+            agent_run.current_state = AgentWorkflowStage.INVESTIGATE.value
             self._stage_investigate(state)
 
             # -----------------------------------------------------------------
             # 3. DIAGNOSE
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.DIAGNOSE)
+            agent_run.current_state = AgentWorkflowStage.DIAGNOSE.value
             self._stage_diagnose(state)
 
             # -----------------------------------------------------------------
             # 4. QUANTIFY
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.QUANTIFY)
+            agent_run.current_state = AgentWorkflowStage.QUANTIFY.value
             self._stage_quantify(state)
 
             # -----------------------------------------------------------------
             # 5. RECOMMEND
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.RECOMMEND)
+            agent_run.current_state = AgentWorkflowStage.RECOMMEND.value
             self._stage_recommend(state)
 
             # -----------------------------------------------------------------
             # 6. POLICY CHECK
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.POLICY_CHECK)
+            agent_run.current_state = AgentWorkflowStage.POLICY_CHECK.value
             self._stage_policy_check(state)
 
             # -----------------------------------------------------------------
             # 7. EXECUTE or REQUEST APPROVAL
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.EXECUTE_OR_APPROVE)
+            agent_run.current_state = AgentWorkflowStage.EXECUTE_OR_APPROVE.value
             self._stage_execute_or_approve(state, auto_execute)
 
             # -----------------------------------------------------------------
             # 8. VERIFY
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.VERIFY)
+            agent_run.current_state = AgentWorkflowStage.VERIFY.value
             self._stage_verify(state)
 
             # -----------------------------------------------------------------
             # 9. REPORT
             # -----------------------------------------------------------------
             state.transition_to(AgentWorkflowStage.REPORT)
-            response = self._stage_report(state)
+            agent_run.current_state = AgentWorkflowStage.REPORT.value
+            response = self._stage_report(state, agent_run)
 
             return response
+
+        except Exception as ex:
+            state.fail(str(ex))
+            agent_run.status = "FAILED"
+            agent_run.current_state = AgentWorkflowStage.FAILED.value
+            agent_run.failure_reason = str(ex)
+            agent_run.completed_at = datetime.now(timezone.utc)
+            agent_run.execution_logs_json = [l.model_dump(mode="json") for l in state.execution_logs]
+            try:
+                self.db.commit()
+            except Exception:
+                self.db.rollback()
+            raise
 
         finally:
             # Enforce workflow isolation: wipe in-memory scratchpad
@@ -513,10 +559,10 @@ class AIRecoveryAgent:
         else:
             state.log_tool_execution("verify_action_status", {"action_status": "queued_or_blocked"}, "Verified policy verdict and dispatch readiness", 1.0)
 
-    def _stage_report(self, state: AgentState) -> AgentInvestigationResponse:
+    def _stage_report(self, state: AgentState, agent_run: Optional[AgentRun] = None) -> AgentInvestigationResponse:
         """
-        Assemble the final structured report and persist AgentDecision record.
-        Strictly contains the required 10 fields without hidden chain-of-thought.
+        Assemble the final structured report and persist AgentDecision and AgentRun records.
+        Strictly contains the required fields without hidden chain-of-thought.
         """
         state.log_tool_execution("generate_report", {"workflow_id": str(state.workflow_id)}, "Assembled concise evidence-based final response", 1.0)
         diag = state.memory.get("diagnostics", {})
@@ -580,6 +626,30 @@ class AIRecoveryAgent:
         except Exception:
             self.db.rollback()
 
+        # Update AgentRun entity if provided
+        if agent_run:
+            agent_run.status = "COMPLETED"
+            agent_run.current_state = AgentWorkflowStage.REPORT.value
+            agent_run.completed_at = datetime.now(timezone.utc)
+            agent_run.problem = diag.get("problem", "")
+            agent_run.diagnosis = diag.get("evidence", "")
+            agent_run.recommended_action = rec.get("recommended_action", "")
+            agent_run.policy_verdict = policy.get("verdict", "")
+            agent_run.decision_summary = {
+                "financial_impact": quant.get("financial_impact", ""),
+                "recovery_probability": float(quant.get("recovery_probability", 0.0)),
+                "expected_recovery": float(quant.get("expected_recovery", 0.0)),
+                "risk_level": rec.get("risk_level", "low"),
+                "policy_decision": policy.get("decision").decision if policy.get("decision") else None,
+                "requires_approval": policy.get("decision").approval_required if policy.get("decision") else False,
+                "execution_summary": exec_info.get("next_step", "")
+            }
+            agent_run.execution_logs_json = [l.model_dump(mode="json") for l in state.execution_logs]
+            try:
+                self.db.commit()
+            except Exception:
+                self.db.rollback()
+
         pol_dec = policy.get("decision")
         pol_payload = pol_dec.model_dump(mode="json") if pol_dec else None
         pipeline_payload = pol_dec.pipeline.model_dump(mode="json") if pol_dec else None
@@ -587,6 +657,8 @@ class AIRecoveryAgent:
         return AgentInvestigationResponse(
             workflow_id=state.workflow_id,
             merchant_id=state.merchant_id,
+            agent_run_id=agent_run.id if agent_run else state.agent_run_id,
+            causal_trace_id=state.causal_trace_id,
             problem=diag.get("problem", "Payment failure rate for UPI increased from 4.2% to 11.8%."),
             evidence=diag.get("evidence", "The increase is concentrated in Bank A and Android devices between 19:00 and 21:00. An alternative payment route is available."),
             financial_impact=quant.get("financial_impact", "₹4,999 is affected and ₹4,099 is estimated recoverable."),
@@ -601,3 +673,4 @@ class AIRecoveryAgent:
             policy_decision=pol_payload,
             pipeline=pipeline_payload
         )
+

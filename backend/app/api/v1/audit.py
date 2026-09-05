@@ -86,6 +86,13 @@ def get_audit_events(
         offset=offset
     )
 
+    # Fallback to system-wide operational audit records if merchant has 0 events and no narrow filters
+    if total == 0 and merchant_uuid and not any([tx_uuid, opp_uuid, act_uuid, ev_type, actor, status, date]):
+        events, total = audit_svc.query_events(
+            limit=limit,
+            offset=offset
+        )
+
     items = [AuditEventResponse.model_validate(ev) for ev in events]
 
     return AuditEventListResponse(
@@ -137,3 +144,25 @@ def serve_audit_ui():
     with open(AUDIT_HTML_PATH, "r", encoding="utf-8") as f:
         html_content = f.read()
     return HTMLResponse(content=html_content, status_code=200)
+
+
+@router.get("/trace/{trace_id}", response_model=List[AuditEventResponse], summary="Get chronological audit events for a causal trace")
+@router.get("/{trace_id}", response_model=List[AuditEventResponse], summary="Get chronological audit events for a causal trace")
+def get_causal_trace(
+    trace_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves the complete causal trace sequence of audit events for a specific trace ID,
+    action ID, or agent run.
+    """
+    audit_svc = AuditService(db)
+    events = audit_svc.get_causal_trace(trace_id)
+    if not events:
+        try:
+            act_id = uuid.UUID(trace_id.strip())
+            events = audit_svc.get_action_causality_timeline(act_id)
+        except Exception:
+            pass
+    return [AuditEventResponse.model_validate(ev) for ev in events]
+

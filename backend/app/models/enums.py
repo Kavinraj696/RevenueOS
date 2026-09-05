@@ -92,10 +92,16 @@ class ActionStatus(StrEnum):
     BLOCKED = "blocked"
     EXPIRED = "expired"
 
-    # Backward-compatible aliases
+    # Backward-compatible and State Machine aliases
     PROPOSED = "proposed"
     EXECUTED = "executed"
     SUCCEEDED = "succeeded"
+    PENDING_APPROVAL = "pending_approval"
+    REJECTED = "rejected"
+    REQUESTED = "requested"
+    POLICY_ALLOWED = "policy_allowed"
+    VERIFICATION_PENDING = "verification_pending"
+    VERIFIED = "verified"
 
 class RiskSegment(StrEnum):
     LOW = "low"

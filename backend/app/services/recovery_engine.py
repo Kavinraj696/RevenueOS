@@ -173,6 +173,9 @@ class RecoveryOpportunityEngine:
             failure_reason=failure_reason,
             explanation=explanation,
             recommended_actions_json=actions,
+            model_version=getattr(model, "MODEL_VERSION", "recovery_probability_v1"),
+            feature_version=getattr(model, "FEATURE_VERSION", "v1.0.0"),
+            prediction_time=datetime.now(timezone.utc),
             created_at=payment.created_at,
             updated_at=datetime.now(timezone.utc),
         )
@@ -264,6 +267,9 @@ class RecoveryOpportunityEngine:
             failure_reason=f"Abandoned cart at {stage}",
             explanation=explanation,
             recommended_actions_json=actions,
+            model_version="checkout_intent_heuristic_v1",
+            feature_version="v1.0.0",
+            prediction_time=datetime.now(timezone.utc),
             created_at=session.created_at,
             updated_at=datetime.now(timezone.utc),
         )

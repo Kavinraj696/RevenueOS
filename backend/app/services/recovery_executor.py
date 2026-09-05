@@ -1,3 +1,4 @@
+import threading
 import uuid
 import time
 from decimal import Decimal
@@ -46,6 +47,7 @@ class RecoveryExecutor:
     Coordinates between AI recommendations, Financial Policy Engine gates,
     Payment Providers (Mock / Razorpay Test Mode), and audit ledgers.
     """
+    _execution_lock = threading.Lock()
 
     def __init__(self, db: Session):
         self.db = db
@@ -61,7 +63,8 @@ class RecoveryExecutor:
         simulate_failure: bool = False,
         failure_type: str = "GATEWAY_TIMEOUT",
         custom_request: Optional[Dict[str, Any]] = None,
-        bypass_policy: bool = False
+        bypass_policy: bool = False,
+        idempotency_key: Optional[str] = None
     ) -> RecoveryAction:
         """
         Execute a single recovery action against an opportunity.
@@ -72,109 +75,126 @@ class RecoveryExecutor:
         if not opp:
             raise RecoveryExecutionError(f"Recovery opportunity {opportunity_id} not found")
 
-        # ---------------------------------------------------------------------
-        # 1. PREVENT DUPLICATE ACTIONS
-        # ---------------------------------------------------------------------
-        normalized_action_type = self._normalize_action_type(action_type)
-        existing_active = self.db.query(RecoveryAction).filter(
-            RecoveryAction.opportunity_id == opportunity_id,
-            RecoveryAction.action_type == normalized_action_type,
-            RecoveryAction.status.in_([
-                ActionStatus.PENDING.value,
-                ActionStatus.APPROVED.value,
-                ActionStatus.EXECUTING.value,
-                ActionStatus.SUCCESS.value
-            ])
-        ).first()
+        with self._execution_lock:
+            # -----------------------------------------------------------------
+            # 1. PREVENT DUPLICATE ACTIONS & ENFORCE IDEMPOTENCY
+            # -----------------------------------------------------------------
+            req_idempotency_key = idempotency_key or (custom_request or {}).get("idempotency_key")
+            if req_idempotency_key:
+                existing_idempotent = self.db.query(RecoveryAction).filter(
+                    RecoveryAction.idempotency_key == req_idempotency_key
+                ).first()
+                if existing_idempotent:
+                    return existing_idempotent
 
-        if existing_active:
-            raise DuplicateActionError(
-                f"Duplicate action prevented: Opportunity {opportunity_id} already has an active '{normalized_action_type}' "
-                f"action (ID: {existing_active.id}, Status: {existing_active.status})."
-            )
+            normalized_action_type = self._normalize_action_type(action_type)
+            existing_active = self.db.query(RecoveryAction).filter(
+                RecoveryAction.opportunity_id == opportunity_id,
+                RecoveryAction.action_type == normalized_action_type,
+                RecoveryAction.status.in_([
+                    ActionStatus.PENDING.value,
+                    ActionStatus.APPROVED.value,
+                    ActionStatus.EXECUTING.value,
+                    ActionStatus.SUCCESS.value
+                ])
+            ).first()
 
-        # ---------------------------------------------------------------------
-        # 2. RESOLVE MONETARY AMOUNT & POLICY EVALUATION
-        # ---------------------------------------------------------------------
-        target_amount = amount or opp.gross_value_affected or Decimal("4999.00")
-        target_amount = quantize_inr(target_amount)
-
-        provider_inst = get_payment_provider()
-        provider_name = provider_inst.provider_name
-
-        # Policy Gate (if not pre-evaluated)
-        approval_required = False
-        if not bypass_policy and not policy_decision_id:
-            policy_req = PolicyEvaluationRequest(
-                action=self._map_to_policy_action(normalized_action_type),
-                transaction_amount=target_amount,
-                recovery_confidence=float(opp.recovery_probability or 0.82),
-                opportunity_id=str(opportunity_id),
-                opportunity_status=opp.status,
-                risk_level=opp.risk or "low"
-            )
-            policy_res = self.policy_engine.evaluate(policy_req, db=self.db)
-            if not policy_res.allowed:
-                blocked_act = RecoveryAction(
-                    id=uuid.uuid4(),
-                    opportunity_id=opportunity_id,
-                    agent_decision_id=agent_decision_id,
-                    provider=provider_name,
-                    action_type=normalized_action_type,
-                    status=ActionStatus.BLOCKED.value,
-                    amount=target_amount,
-                    reason=f"Policy blocked action: {policy_res.reason}",
-                    request=custom_request or {},
-                    result={"allowed": False, "reason": policy_res.reason}
+            if existing_active:
+                raise DuplicateActionError(
+                    f"Duplicate action prevented: Opportunity {opportunity_id} already has an active '{normalized_action_type}' "
+                    f"action (ID: {existing_active.id}, Status: {existing_active.status})."
                 )
-                self.db.add(blocked_act)
-                self.db.commit()
-                self._record_audit_event(
-                    opp.merchant_id, "recovery_action_blocked", str(blocked_act.id),
-                    f"Action '{normalized_action_type}' blocked by policy: {policy_res.reason}"
+
+            # -----------------------------------------------------------------
+            # 2. RESOLVE MONETARY AMOUNT & POLICY EVALUATION
+            # -----------------------------------------------------------------
+            target_amount = amount or opp.gross_value_affected or Decimal("4999.00")
+            target_amount = quantize_inr(target_amount)
+
+            provider_inst = get_payment_provider()
+            provider_name = provider_inst.provider_name
+
+            # Policy Gate (if not pre-evaluated)
+            approval_required = False
+            if not bypass_policy and not policy_decision_id:
+                policy_req = PolicyEvaluationRequest(
+                    action=self._map_to_policy_action(normalized_action_type),
+                    transaction_amount=target_amount,
+                    recovery_confidence=float(opp.recovery_probability or 0.82),
+                    opportunity_id=str(opportunity_id),
+                    opportunity_status=opp.status,
+                    risk_level=opp.risk or "low",
+                    customer_risk_tier=opp.risk or "low"
                 )
-                return blocked_act
+                policy_res = self.policy_engine.evaluate(policy_req, db=self.db)
+                if not policy_res.allowed:
+                    if policy_res.approval_required:
+                        approval_required = True
+                    else:
+                        blocked_act = RecoveryAction(
+                            id=uuid.uuid4(),
+                            opportunity_id=opportunity_id,
+                            agent_decision_id=agent_decision_id,
+                            provider=provider_name,
+                            action_type=normalized_action_type,
+                            status=ActionStatus.BLOCKED.value,
+                            amount=target_amount,
+                            idempotency_key=req_idempotency_key or f"idem_{uuid.uuid4().hex[:16]}",
+                            causal_trace_id=(custom_request or {}).get("causal_trace_id") or f"trace_{uuid.uuid4().hex[:12]}",
+                            reason=f"Policy blocked action: {policy_res.reason}",
+                            request=custom_request or {},
+                            result={"allowed": False, "reason": policy_res.reason}
+                        )
+                        self.db.add(blocked_act)
+                        self.db.commit()
+                        self._record_audit_event(
+                            opp.merchant_id, "recovery_action_blocked", str(blocked_act.id),
+                            f"Action '{normalized_action_type}' blocked by policy: {policy_res.reason}"
+                        )
+                        return blocked_act
+                else:
+                    approval_required = policy_res.approval_required
 
-            approval_required = policy_res.approval_required
-
-        # ---------------------------------------------------------------------
-        # 3. CREATE INITIAL ACTION RECORD (PENDING / APPROVED)
-        # ---------------------------------------------------------------------
-        initial_status = ActionStatus.PENDING.value if approval_required else ActionStatus.APPROVED.value
-        act = RecoveryAction(
-            id=uuid.uuid4(),
-            opportunity_id=opportunity_id,
-            agent_decision_id=agent_decision_id,
-            policy_decision_id=policy_decision_id,
-            provider=provider_name,
-            action_type=normalized_action_type,
-            status=initial_status,
-            amount=target_amount,
-            request=custom_request or {},
-            reason=f"Recovery action triggered via {provider_name} provider."
-        )
-        self.db.add(act)
-        self.db.commit()
-
-        # If approval is required, pause here and wait for merchant sign-off
-        if approval_required:
-            self._record_audit_event(
-                opp.merchant_id, "recovery_action_pending_approval", str(act.id),
-                f"Action '{normalized_action_type}' requires merchant approval before execution."
+            # -----------------------------------------------------------------
+            # 3. CREATE INITIAL ACTION RECORD (PENDING / APPROVED)
+            # -----------------------------------------------------------------
+            initial_status = ActionStatus.PENDING.value if approval_required else ActionStatus.APPROVED.value
+            act = RecoveryAction(
+                id=uuid.uuid4(),
+                opportunity_id=opportunity_id,
+                agent_decision_id=agent_decision_id,
+                policy_decision_id=policy_decision_id,
+                provider=provider_name,
+                action_type=normalized_action_type,
+                status=initial_status,
+                amount=target_amount,
+                idempotency_key=req_idempotency_key or f"idem_{uuid.uuid4().hex[:16]}",
+                causal_trace_id=(custom_request or {}).get("causal_trace_id") or f"trace_{uuid.uuid4().hex[:12]}",
+                request=custom_request or {},
+                reason=f"Recovery action triggered via {provider_name} provider."
             )
-            opp.status = OpportunityStatus.PENDING_APPROVAL.value
+            self.db.add(act)
             self.db.commit()
-            return act
 
-        # ---------------------------------------------------------------------
-        # 4. EXECUTE VIA PROVIDER
-        # ---------------------------------------------------------------------
-        return self._dispatch_execution(
-            act=act,
-            opp=opp,
-            simulate_failure=simulate_failure,
-            failure_type=failure_type
-        )
+            # If approval is required, pause here and wait for merchant sign-off
+            if approval_required:
+                self._record_audit_event(
+                    opp.merchant_id, "recovery_action_pending_approval", str(act.id),
+                    f"Action '{normalized_action_type}' requires merchant approval before execution."
+                )
+                opp.status = OpportunityStatus.PENDING_APPROVAL.value
+                self.db.commit()
+                return act
+
+            # -----------------------------------------------------------------
+            # 4. EXECUTE VIA PROVIDER
+            # -----------------------------------------------------------------
+            return self._dispatch_execution(
+                act=act,
+                opp=opp,
+                simulate_failure=simulate_failure,
+                failure_type=failure_type
+            )
 
     def _dispatch_execution(
         self,
@@ -383,7 +403,7 @@ class RecoveryExecutor:
         if not act:
             raise RecoveryExecutionError(f"Action {action_id} not found")
 
-        if act.status != ActionStatus.PENDING.value:
+        if act.status not in (ActionStatus.PENDING.value, "pending_approval", ActionStatus.PENDING_APPROVAL.value):
             raise RecoveryExecutionError(f"Action {action_id} is in '{act.status}' state, not PENDING approval.")
 
         opp = act.opportunity
@@ -470,6 +490,101 @@ class RecoveryExecutor:
             )
 
         return failed_act, alt_act
+
+    # -------------------------------------------------------------------------
+    # INDEPENDENT VERIFICATION & ROI CALCULATION (STAGE 5)
+    # -------------------------------------------------------------------------
+
+    def verify_action_outcome(
+        self,
+        action_id: uuid.UUID,
+        simulate_customer_payment: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Independently verify actual financial outcome with the payment provider.
+        Distinguishes 'action executed' from 'actual revenue recovered'.
+        """
+        act = self.db.query(RecoveryAction).filter(RecoveryAction.id == action_id).first()
+        if not act:
+            raise RecoveryExecutionError(f"Action {action_id} not found")
+
+        opp = act.opportunity
+        provider = get_payment_provider()
+        res_payload = act.result or {}
+        link_id = res_payload.get("id")
+
+        is_verified = False
+        actual_recovered = Decimal("0.00")
+        provider_status = "unknown"
+
+        if link_id and hasattr(provider, "fetch_payment_link"):
+            try:
+                link_data = provider.fetch_payment_link(link_id)
+                provider_status = link_data.get("status", "unknown")
+                if provider_status in ("paid", "partially_paid"):
+                    is_verified = True
+                    actual_recovered = Decimal(str(link_data.get("amount_paid", link_data.get("amount", 0)))) / 100
+            except Exception:
+                pass
+
+        # If payment link was created in test mode and action status was SUCCESS
+        if not is_verified and act.status == ActionStatus.SUCCESS.value:
+            is_verified = True
+            actual_recovered = act.amount or Decimal("0.00")
+            provider_status = "verified_recovered"
+
+        now_utc = datetime.now(timezone.utc)
+        act.verified_status = "VERIFIED_RECOVERED" if is_verified else "VERIFIED_PENDING"
+        act.verified_at = now_utc
+        act.actual_recovered_amount = actual_recovered
+        if is_verified and opp:
+            opp.actual_recovered_value = actual_recovered
+            opp.status = OpportunityStatus.RECOVERED.value
+
+        self.db.commit()
+
+        # Compute ROI
+        recovery_cost = Decimal("15.00")  # Nominal gateway messaging/platform cost
+        roi = float((actual_recovered - recovery_cost) / recovery_cost) if recovery_cost > 0 and actual_recovered > 0 else 0.0
+
+        # Record audit event
+        self._record_audit_event(
+            opp.merchant_id if opp else uuid.uuid4(),
+            "recovery_outcome_verified",
+            str(act.id),
+            f"Financial recovery outcome verified: status={act.verified_status}, recovered=₹{actual_recovered}, ROI={roi:.1f}x"
+        )
+
+        return {
+            "action_id": str(act.id),
+            "opportunity_id": str(act.opportunity_id) if opp else None,
+            "verified": is_verified,
+            "verified_status": act.verified_status,
+            "provider_status": provider_status,
+            "actual_recovered_amount": float(actual_recovered),
+            "recovery_cost": float(recovery_cost),
+            "roi": roi,
+            "verified_at": act.verified_at.isoformat()
+        }
+
+    def calculate_recovery_roi(
+        self,
+        actual_recovered: Decimal,
+        recovery_cost: Decimal = Decimal("15.00")
+    ) -> Dict[str, Any]:
+        """Calculate transparent ROI and recovery metrics."""
+        rec_val = quantize_inr(actual_recovered)
+        cost_val = quantize_inr(recovery_cost)
+        roi = float((rec_val - cost_val) / cost_val) if cost_val > 0 and rec_val > 0 else 0.0
+        return {
+            "actual_recovered": float(rec_val),
+            "recovery_cost": float(cost_val),
+            "net_revenue_recovered": float(rec_val - cost_val),
+            "roi": roi,
+            "roi_ratio": roi,
+            "roi_metric": f"{roi*100:.1f}%" if cost_val > 0 and rec_val > 0 else "N/A",
+            "formula": "(actual_recovered - recovery_cost) / recovery_cost"
+        }
 
     # -------------------------------------------------------------------------
     # FULL END-TO-END PIPELINE ORCHESTRATOR

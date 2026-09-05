@@ -1,53 +1,282 @@
 {
-  "training_timestamp": "2026-09-05T11:45:11.465131+00:00",
-  "train_samples": 84,
-  "test_samples": 28,
+  "training_timestamp": "2026-09-05T18:15:51.022631+00:00",
+  "dataset_quality": {
+    "total_samples": 125,
+    "positive_samples": 54,
+    "negative_samples": 71,
+    "positive_rate": 0.432,
+    "duplicate_count": 0,
+    "missing_value_count": 0,
+    "is_valid": true,
+    "warnings": []
+  },
+  "temporal_split": {
+    "total_samples": 125,
+    "train_samples": 75,
+    "val_samples": 25,
+    "test_samples": 25,
+    "train_range": [
+      "2026-08-18T13:44:00+00:00",
+      "2026-08-27T22:49:00+00:00"
+    ],
+    "val_range": [
+      "2026-08-27T23:23:00+00:00",
+      "2026-08-30T16:33:00+00:00"
+    ],
+    "test_range": [
+      "2026-08-30T18:11:00+00:00",
+      "2026-09-05T18:20:49.301833+00:00"
+    ]
+  },
   "baseline_model": {
+    "name": "HistoricalMeanBaseline",
+    "metrics": {
+      "model_name": "historical_mean_baseline",
+      "accuracy": 0.8,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.5,
+      "pr_auc": 0.2,
+      "brier_score": 0.246,
+      "test_samples": 25
+    }
+  },
+  "logistic_regression_benchmark": {
     "name": "LogisticRegression_Baseline",
     "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": false,
+      "accuracy": 0.84,
       "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "accuracy": 1.0,
-      "roc_auc": 1.0,
+      "recall": 0.2,
+      "f1": 0.3333,
+      "roc_auc": 0.81,
+      "pr_auc": 0.5709,
+      "brier_score": 0.1346,
       "confusion_matrix": [
         [
-          25,
+          20,
           0
         ],
         [
-          0,
-          3
+          4,
+          1
         ]
       ],
-      "test_samples": 28
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.4,
+          "recall_at_k": 0.4
+        }
+      }
+    }
+  },
+  "production_model": {
+    "name": "HistGradientBoosting_Production",
+    "uncalibrated_metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": false,
+      "accuracy": 0.88,
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1": 0.7692,
+      "roc_auc": 0.95,
+      "pr_auc": 0.7862,
+      "brier_score": 0.1133,
+      "confusion_matrix": [
+        [
+          17,
+          3
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.8,
+          "recall_at_k": 0.8
+        }
+      }
+    },
+    "calibrated_metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.88,
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1": 0.7692,
+      "roc_auc": 0.95,
+      "pr_auc": 0.7862,
+      "brier_score": 0.2071,
+      "confusion_matrix": [
+        [
+          17,
+          3
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.8,
+          "recall_at_k": 0.8
+        }
+      }
+    },
+    "metrics": {
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.88,
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1": 0.7692,
+      "roc_auc": 0.95,
+      "pr_auc": 0.7862,
+      "brier_score": 0.2071,
+      "confusion_matrix": [
+        [
+          17,
+          3
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.8,
+          "recall_at_k": 0.8
+        }
+      }
     }
   },
   "improved_model": {
     "name": "HistGradientBoosting_Production",
     "metrics": {
-      "precision": 1.0,
+      "model_name": "payment_recovery_probability",
+      "model_version": "recovery_probability_v1",
+      "feature_version": "v1.0.0",
+      "is_calibrated": true,
+      "accuracy": 0.88,
+      "precision": 0.625,
       "recall": 1.0,
-      "f1": 1.0,
-      "accuracy": 1.0,
-      "roc_auc": 1.0,
+      "f1": 0.7692,
+      "roc_auc": 0.95,
+      "pr_auc": 0.7862,
+      "brier_score": 0.2071,
       "confusion_matrix": [
         [
-          25,
-          0
+          17,
+          3
         ],
         [
           0,
-          3
+          5
         ]
       ],
-      "test_samples": 28
+      "test_samples": 25,
+      "top_k_metrics": {
+        "top_10_percent": {
+          "k": 2,
+          "precision_at_k": 0.5,
+          "recall_at_k": 0.2
+        },
+        "top_20_percent": {
+          "k": 5,
+          "precision_at_k": 0.8,
+          "recall_at_k": 0.8
+        }
+      }
     }
   },
   "comparison": {
-    "roc_auc_delta": 0.0,
-    "f1_delta": 0.0,
-    "precision_delta": 0.0,
-    "recall_delta": 0.0
+    "roc_auc_lift": 0.45,
+    "f1_lift": 0.7692,
+    "brier_reduction": 0.0389
+  },
+  "calibration_comparison": {
+    "uncalibrated_brier": 0.1133,
+    "calibrated_brier": 0.2071,
+    "brier_improvement": -0.0938
+  },
+  "model_lift_vs_naive": {
+    "roc_auc_lift": 0.45,
+    "f1_lift": 0.7692,
+    "brier_reduction": 0.0389
+  },
+  "model_2_ranking_evaluation": {
+    "total_opportunities": 25,
+    "total_portfolio_actual_recovery": 233483.78,
+    "ranking_comparisons": {
+      "top_2": {
+        "k": 2,
+        "revenueos_expected_recovery": 55629.2,
+        "revenueos_actual_captured": 174086.31,
+        "baseline_value_first_captured": 108593.42,
+        "baseline_prob_first_captured": 65492.89,
+        "baseline_random_captured": 65492.89,
+        "value_capture_rate": 0.7456
+      },
+      "top_5": {
+        "k": 5,
+        "revenueos_expected_recovery": 114941.12,
+        "revenueos_actual_captured": 225006.92,
+        "baseline_value_first_captured": 225006.92,
+        "baseline_prob_first_captured": 229725.82,
+        "baseline_random_captured": 65492.89,
+        "value_capture_rate": 0.9637
+      },
+      "top_10": {
+        "k": 10,
+        "revenueos_expected_recovery": 121321.42,
+        "revenueos_actual_captured": 233483.78,
+        "baseline_value_first_captured": 229725.82,
+        "baseline_prob_first_captured": 233483.78,
+        "baseline_random_captured": 116413.5,
+        "value_capture_rate": 1.0
+      }
+    }
   }
 }

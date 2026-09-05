@@ -126,3 +126,67 @@ class TemporalDataSplitter:
         train_recs = sorted_recs[:split_idx]
         test_recs = sorted_recs[split_idx:]
         return train_recs, test_recs
+
+    @staticmethod
+    def split_train_val_test(
+        records: List[Any],
+        time_key: str = "prediction_time",
+        train_ratio: float = 0.60,
+        val_ratio: float = 0.20,
+    ) -> Tuple[List[Any], List[Any], List[Any], Dict[str, Any]]:
+        """
+        Executes strict 3-way chronological split (Train / Validation / Test).
+        Enforces: max(train) <= min(val) and max(val) <= min(test).
+        Returns: (train_records, val_records, test_records, metadata)
+        """
+        if not records:
+            return [], [], [], {
+                "train_samples": 0, "val_samples": 0, "test_samples": 0,
+                "train_range": (None, None), "val_range": (None, None), "test_range": (None, None),
+            }
+
+        def get_time(item):
+            if isinstance(item, dict):
+                return item[time_key]
+            return getattr(item, time_key)
+
+        sorted_recs = sorted(records, key=get_time)
+        n = len(sorted_recs)
+
+        idx_train = max(1, int(n * train_ratio))
+        idx_val = max(idx_train + 1, int(n * (train_ratio + val_ratio)))
+        if idx_val >= n and n > 2:
+            idx_val = n - 1
+
+        train_recs = sorted_recs[:idx_train]
+        val_recs = sorted_recs[idx_train:idx_val]
+        test_recs = sorted_recs[idx_val:]
+
+        train_min = get_time(train_recs[0]) if train_recs else None
+        train_max = get_time(train_recs[-1]) if train_recs else None
+        val_min = get_time(val_recs[0]) if val_recs else None
+        val_max = get_time(val_recs[-1]) if val_recs else None
+        test_min = get_time(test_recs[0]) if test_recs else None
+        test_max = get_time(test_recs[-1]) if test_recs else None
+
+        # Verify chronological ordering
+        if train_max and val_min:
+            assert train_max <= val_min, f"Temporal leakage: train_max ({train_max}) > val_min ({val_min})"
+        if val_max and test_min:
+            assert val_max <= test_min, f"Temporal leakage: val_max ({val_max}) > test_min ({test_min})"
+
+        metadata = {
+            "total_samples": n,
+            "train_samples": len(train_recs),
+            "val_samples": len(val_recs),
+            "test_samples": len(test_recs),
+            "train_range": (train_min.isoformat() if hasattr(train_min, "isoformat") else str(train_min),
+                            train_max.isoformat() if hasattr(train_max, "isoformat") else str(train_max)),
+            "val_range": (val_min.isoformat() if hasattr(val_min, "isoformat") else str(val_min),
+                          val_max.isoformat() if hasattr(val_max, "isoformat") else str(val_max)),
+            "test_range": (test_min.isoformat() if hasattr(test_min, "isoformat") else str(test_min),
+                           test_max.isoformat() if hasattr(test_max, "isoformat") else str(test_max)),
+        }
+
+        return train_recs, val_recs, test_recs, metadata
+

@@ -1,5 +1,6 @@
 import json
 import uuid
+import hashlib
 import logging
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -16,11 +17,13 @@ from app.models.payment_attempt import PaymentAttempt
 from app.models.subscription import Subscription
 from app.models.subscription_attempt import SubscriptionAttempt
 from app.models.recovery_opportunity import RecoveryOpportunity
+from app.models.recovery_action import RecoveryAction
 from app.models.webhook_event import WebhookEvent
 from app.models.audit_event import AuditEvent
 from app.services.payment_provider.registry import get_payment_provider
 
 logger = logging.getLogger("revenueos.webhooks")
+
 
 
 class RazorpayWebhookEngine:
@@ -73,6 +76,8 @@ class RazorpayWebhookEngine:
             )
 
         event_name = data.get("event", "unknown.event")
+        payload_hash = hashlib.sha256(payload_body).hexdigest()
+
         # Extract or synthesize unique event ID for idempotency deduplication
         event_id = (
             data.get("event_id")
@@ -97,10 +102,11 @@ class RazorpayWebhookEngine:
                 "event_type": event_name,
                 "message": "Webhook event already processed previously. Zero duplicate mutations.",
                 "idempotent": True,
+                "processing_status": "DUPLICATE",
                 "processed_at": existing_event.processed_at.isoformat() if existing_event.processed_at else None
             }
 
-        # Store incoming event record
+        # Store incoming event record in PROCESSING state
         if not existing_event:
             existing_event = WebhookEvent(
                 id=uuid.uuid4(),
@@ -109,67 +115,93 @@ class RazorpayWebhookEngine:
                 event_type=event_name,
                 raw_payload_json=data,
                 signature_verified=True,
+                processing_status="PROCESSING",
+                payload_hash=payload_hash,
                 processed=False,
                 received_at=get_utc_now()
             )
             self.db.add(existing_event)
-            self.db.flush()
+            self.db.commit()
+            self.db.refresh(existing_event)
 
         # ---------------------------------------------------------------------
-        # 4. STATE MUTATION & RECOVERY TRIGGERING
+        # 4. STATE MUTATION & RECOVERY TRIGGERING (TRANSACTIONAL)
         # ---------------------------------------------------------------------
-        state_updated, related_entity_type, related_entity_id, recovery_triggered, merchant_id, audit_msg = (
-            self._handle_event_mutation(event_name, data)
-        )
-
-        # ---------------------------------------------------------------------
-        # 5. GENERATE AUDIT EVENT
-        # ---------------------------------------------------------------------
-        audit_id = None
-        if merchant_id and related_entity_id:
-            audit = AuditEvent(
-                id=uuid.uuid4(),
-                merchant_id=merchant_id,
-                actor="WEBHOOK_ENGINE",
-                related_entity_type=related_entity_type,
-                related_entity_id=related_entity_id,
-                transaction_id=related_entity_id if related_entity_type == "payment" else None,
-                event_type=f"webhook_{event_name.replace('.', '_')}",
-                status="SUCCESS",
-                summary=audit_msg,
-                message=audit_msg,
-                metadata_json={
-                    "event_name": event_name,
-                    "event_id": event_id,
-                    "state_updated": state_updated,
-                    "recovery_triggered": recovery_triggered
-                },
-                request_id=event_id
+        try:
+            state_updated, related_entity_type, related_entity_id, recovery_triggered, merchant_id, audit_msg = (
+                self._handle_event_mutation(event_name, data)
             )
-            self.db.add(audit)
-            self.db.flush()
-            audit_id = str(audit.id)
 
-        # ---------------------------------------------------------------------
-        # 6. MARK PROCESSED & COMMIT
-        # ---------------------------------------------------------------------
-        existing_event.processed = True
-        existing_event.processed_at = get_utc_now()
-        self.db.commit()
+            # Assign merchant_id if resolved
+            if merchant_id and not existing_event.merchant_id:
+                existing_event.merchant_id = merchant_id
 
-        logger.info(f"Webhook {event_id} ({event_name}) processed successfully.")
-        return {
-            "status": "success",
-            "event_id": event_id,
-            "event_type": event_name,
-            "idempotent": False,
-            "state_updated": state_updated,
-            "related_entity_type": related_entity_type,
-            "related_entity_id": str(related_entity_id) if related_entity_id else None,
-            "recovery_triggered": recovery_triggered,
-            "audit_event_id": audit_id,
-            "processed_at": existing_event.processed_at.isoformat()
-        }
+            # -----------------------------------------------------------------
+            # 5. GENERATE AUDIT EVENT
+            # -----------------------------------------------------------------
+            audit_id = None
+            if merchant_id and related_entity_id:
+                audit = AuditEvent(
+                    id=uuid.uuid4(),
+                    merchant_id=merchant_id,
+                    actor="WEBHOOK_ENGINE",
+                    related_entity_type=related_entity_type,
+                    related_entity_id=related_entity_id,
+                    transaction_id=related_entity_id if related_entity_type == "payment" else None,
+                    event_type=f"webhook_{event_name.replace('.', '_')}",
+                    status="SUCCESS",
+                    summary=audit_msg,
+                    message=audit_msg,
+                    metadata_json={
+                        "event_name": event_name,
+                        "event_id": event_id,
+                        "payload_hash": payload_hash,
+                        "state_updated": state_updated,
+                        "recovery_triggered": recovery_triggered
+                    },
+                    request_id=event_id
+                )
+                self.db.add(audit)
+                self.db.flush()
+                audit_id = str(audit.id)
+
+            # -----------------------------------------------------------------
+            # 6. MARK PROCESSED & COMMIT
+            # -----------------------------------------------------------------
+            existing_event.processing_status = "PROCESSED"
+            existing_event.processed = True
+            existing_event.processed_at = get_utc_now()
+            self.db.commit()
+
+            logger.info(f"Webhook {event_id} ({event_name}) processed successfully.")
+            return {
+                "status": "success",
+                "event_id": event_id,
+                "event_type": event_name,
+                "idempotent": False,
+                "processing_status": "PROCESSED",
+                "state_updated": state_updated,
+                "related_entity_type": related_entity_type,
+                "related_entity_id": str(related_entity_id) if related_entity_id else None,
+                "recovery_triggered": recovery_triggered,
+                "audit_event_id": audit_id,
+                "processed_at": existing_event.processed_at.isoformat()
+            }
+        except Exception as proc_err:
+            self.db.rollback()
+            try:
+                # Preserve event in PROCESSING_FAILED state
+                existing_event.processing_status = "PROCESSING_FAILED"
+                existing_event.processing_error = str(proc_err)[:500]
+                self.db.commit()
+            except Exception:
+                pass
+            logger.error(f"Webhook {event_id} processing failed: {proc_err}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Webhook event processing failed: {proc_err}"
+            )
+
 
     def _handle_event_mutation(
         self,
@@ -197,17 +229,33 @@ class RazorpayWebhookEngine:
             payment = self._find_payment(pay_id_str, p_entity)
             if payment:
                 payment.status = PaymentStatus.SUCCESS.value
+                if pay_id_str:
+                    payment.provider_payment_id = pay_id_str
+                payment.reconciliation_status = "MATCHED"
                 m_id = payment.merchant_id
 
-                # Resolve any associated recovery opportunity
+                # Resolve any associated recovery opportunity and actions
                 opp = (
                     self.db.query(RecoveryOpportunity)
                     .filter(RecoveryOpportunity.payment_id == payment.id)
                     .first()
                 )
-                if opp and opp.status != OpportunityStatus.RECOVERED.value:
-                    opp.status = OpportunityStatus.RECOVERED.value
-                    opp.actual_recovered_value = payment.amount
+                if opp:
+                    if opp.status != OpportunityStatus.RECOVERED.value:
+                        opp.status = OpportunityStatus.RECOVERED.value
+                        opp.actual_recovered_value = payment.amount
+
+                    # Reconcile all actions for this opportunity
+                    opp_actions = (
+                        self.db.query(RecoveryAction)
+                        .filter(RecoveryAction.opportunity_id == opp.id)
+                        .all()
+                    )
+                    for act in opp_actions:
+                        act.status = ActionStatus.VERIFIED.value
+                        act.verified_status = "confirmed"
+                        act.verified_at = get_utc_now()
+                        act.actual_recovered_amount = payment.amount
 
                 msg = f"Payment {payment.id} transitioned to SUCCESS via webhook ({event_name}). Amount: ₹{payment.amount}."
                 return True, "payment", payment.id, False, m_id, msg
@@ -225,6 +273,21 @@ class RazorpayWebhookEngine:
 
             payment = self._find_payment(pay_id_str, p_entity)
             if payment:
+                # OUT-OF-ORDER CHECK: Never downgrade an already successful or recovered payment
+                if payment.status in (PaymentStatus.SUCCESS.value, PaymentStatus.RECOVERED.value):
+                    logger.warning(
+                        f"Out-of-order webhook delivery detected: Payment {payment.id} is already in state "
+                        f"'{payment.status}'. Out-of-order 'payment.failed' event ignored."
+                    )
+                    return (
+                        False,
+                        "payment",
+                        payment.id,
+                        False,
+                        payment.merchant_id,
+                        f"Ignored out-of-order payment.failed event for already settled payment {payment.id}."
+                    )
+
                 payment.status = PaymentStatus.FAILED.value
                 m_id = payment.merchant_id
 
@@ -239,6 +302,7 @@ class RazorpayWebhookEngine:
                     failure_reason=error_desc[:255] if error_desc else None
                 )
                 self.db.add(attempt)
+
 
                 # TRIGGER RECOVERY WORKFLOW: Create or update recovery opportunity
                 opp = (
@@ -289,11 +353,20 @@ class RazorpayWebhookEngine:
                 opp.actual_recovered_value = amount_inr or opp.gross_value_affected
                 if opp.payment:
                     opp.payment.status = PaymentStatus.RECOVERED.value
+                    opp.payment.reconciliation_status = "MATCHED"
+
+                actions_list = getattr(opp, "recovery_actions", None) or getattr(opp, "actions", []) or []
+                for act in actions_list:
+                    act.status = ActionStatus.VERIFIED.value
+                    act.verified_status = "confirmed"
+                    act.verified_at = get_utc_now()
+                    act.actual_recovered_amount = opp.actual_recovered_value
 
                 msg = f"Recovery payment link {link_id_str} PAID. Opportunity {opp.id} marked RECOVERED (₹{opp.actual_recovered_value})."
                 return True, "recovery_opportunity", opp.id, False, opp.merchant_id, msg
 
             return False, "payment_link", None, False, fallback_merchant_id, f"Payment link {link_id_str} paid."
+
 
         # ---------------------------------------------------------------------
         # Case D: SUBSCRIPTION EVENTS (subscription.charged, subscription.halted)

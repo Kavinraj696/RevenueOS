@@ -478,3 +478,53 @@ class AuditService:
         ).order_by(AuditEvent.created_at.asc()).all()
 
         return events
+
+    def get_causal_trace(self, trace_id: str) -> List[AuditEvent]:
+        """
+        Retrieve all audit events corresponding to a causal trace ID.
+        Checks request_id, summary text, or matching agent runs / recovery actions.
+        """
+        # 1. Search by request_id or summary containing trace_id
+        events = self.db.query(AuditEvent).filter(
+            (AuditEvent.request_id == trace_id) |
+            (AuditEvent.summary.ilike(f"%{trace_id}%"))
+        ).order_by(AuditEvent.created_at.asc()).all()
+
+        if events:
+            return events
+
+        # 2. Check if trace_id is associated with an AgentRun
+        try:
+            from app.models.agent_run import AgentRun
+            parsed_uuid = None
+            try:
+                parsed_uuid = uuid.UUID(str(trace_id).strip())
+            except Exception:
+                pass
+
+            run_query = self.db.query(AgentRun).filter(AgentRun.causal_trace_id == trace_id)
+            if parsed_uuid:
+                run_query = self.db.query(AgentRun).filter(
+                    (AgentRun.causal_trace_id == trace_id) | (AgentRun.id == parsed_uuid)
+                )
+            run = run_query.first()
+
+            if run:
+                events = self.db.query(AuditEvent).filter(
+                    AuditEvent.merchant_id == run.merchant_id,
+                    AuditEvent.created_at >= run.started_at
+                ).order_by(AuditEvent.created_at.asc()).limit(50).all()
+                if events:
+                    return events
+        except Exception:
+            pass
+
+        # 3. Fallback: try parsing as UUID for direct action timeline
+        try:
+            parsed_id = uuid.UUID(str(trace_id).strip())
+            return self.get_action_causality_timeline(parsed_id)
+        except Exception:
+            pass
+
+        return []
+

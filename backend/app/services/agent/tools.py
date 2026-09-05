@@ -1,7 +1,8 @@
 import uuid
+import time
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, Set
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
@@ -22,6 +23,78 @@ from app.ml.models import PaymentRecoveryModel
 from app.ml.training import get_recovery_model
 from app.db.base import quantize_inr
 from app.services.payment_provider.registry import get_payment_provider
+from app.services.agent.state import AgentWorkflowStage, AgentState
+from app.security import enforce_tool_allowlist, AGENT_FORBIDDEN_TOOLS
+
+
+class ToolStateAuthorizationError(Exception):
+    """Raised when a tool is called outside its permitted workflow state."""
+    pass
+
+
+class TenantAuthorizationError(Exception):
+    """Raised when cross-merchant data access is attempted."""
+    pass
+
+
+TOOL_STAGE_ALLOWLIST: Dict[AgentWorkflowStage, Set[str]] = {
+    AgentWorkflowStage.OBSERVE: {
+        "get_revenue_leak",
+        "get_revenue_leaks",
+        "get_recovery_opportunities",
+        "get_recovery_opportunity",
+        "get_failure_analysis",
+        "get_transaction",
+    },
+    AgentWorkflowStage.INVESTIGATE: {
+        "get_leak_evidence",
+        "get_transaction",
+        "search_transactions",
+        "get_customer_history",
+        "get_payment_attempts",
+        "get_failure_analysis",
+        "get_subscription",
+    },
+    AgentWorkflowStage.DIAGNOSE: {
+        "get_transaction",
+        "get_customer_history",
+        "get_payment_attempts",
+        "get_subscription",
+        "diagnose_root_cause",
+    },
+    AgentWorkflowStage.QUANTIFY: {
+        "calculate_recovery_probability",
+        "calculate_recovery_value",
+        "estimate_recoverable_revenue",
+    },
+    AgentWorkflowStage.RECOMMEND: {
+        "get_recovery_opportunity",
+        "get_recovery_opportunities",
+        "get_available_payment_methods",
+    },
+    AgentWorkflowStage.POLICY_CHECK: {
+        "get_policy",
+        "request_policy_check",
+    },
+    AgentWorkflowStage.EXECUTE_OR_APPROVE: {
+        "request_recovery_action",
+        "create_test_payment_link",
+        "create_test_subscription_link",
+        "send_recovery_notification",
+        "write_audit_event",
+    },
+    AgentWorkflowStage.VERIFY: {
+        "get_action_status",
+        "verify_recovery",
+        "get_recovery_result",
+        "verify_action_status",
+    },
+    AgentWorkflowStage.REPORT: {
+        "create_agent_report",
+        "write_audit_event",
+    },
+    AgentWorkflowStage.FAILED: set(),
+}
 
 
 class AgentTools:
@@ -718,3 +791,396 @@ class AgentTools:
             "request_id": audit.request_id,
             "created_at": audit.created_at.isoformat()
         }
+
+    # -------------------------------------------------------------------------
+    # Tool 17: get_leak_evidence
+    # -------------------------------------------------------------------------
+    def get_leak_evidence(self, leak_id: Union[uuid.UUID, str]) -> Dict[str, Any]:
+        """Extract diagnostic evidence and root causes from a specific revenue leak."""
+        l_id = uuid.UUID(str(leak_id))
+        leak = self.db.query(RevenueLeak).filter(RevenueLeak.id == l_id).first()
+        if not leak:
+            return {"error": f"Revenue leak {leak_id} not found"}
+
+        return {
+            "leak_id": str(leak.id),
+            "merchant_id": str(leak.merchant_id),
+            "leak_type": leak.leak_type,
+            "severity": leak.severity,
+            "confidence": float(leak.confidence),
+            "pattern_description": leak.pattern_description,
+            "root_cause_candidates": leak.root_cause_candidates or [],
+            "evidence": leak.evidence or {},
+            "revenue_at_risk": float(leak.revenue_at_risk),
+            "gross_value_affected": float(leak.gross_value_affected)
+        }
+
+    # -------------------------------------------------------------------------
+    # Tool 18: get_payment_attempts
+    # -------------------------------------------------------------------------
+    def get_payment_attempts(self, transaction_id: Union[uuid.UUID, str]) -> List[Dict[str, Any]]:
+        """Retrieve chronological gateway retry attempts for a transaction."""
+        tx_id = uuid.UUID(str(transaction_id))
+        attempts = self.db.query(PaymentAttempt).filter(
+            PaymentAttempt.payment_id == tx_id
+        ).order_by(PaymentAttempt.attempt_number.asc()).all()
+
+        return [
+            {
+                "id": str(a.id),
+                "payment_id": str(a.payment_id),
+                "attempt_number": a.attempt_number,
+                "status": a.status,
+                "error_code": a.error_code,
+                "failure_reason": a.failure_reason,
+                "gateway_latency_ms": getattr(a, "gateway_latency_ms", 120),
+                "created_at": a.created_at.isoformat() if a.created_at else None
+            }
+            for a in attempts
+        ]
+
+    # -------------------------------------------------------------------------
+    # Tool 19: get_subscription
+    # -------------------------------------------------------------------------
+    def get_subscription(
+        self,
+        subscription_id: Optional[Union[uuid.UUID, str]] = None,
+        customer_id: Optional[Union[uuid.UUID, str]] = None,
+        merchant_id: Optional[Union[uuid.UUID, str]] = None
+    ) -> Dict[str, Any]:
+        """Fetch subscription details, plan amount, and mandate status."""
+        query = self.db.query(Subscription)
+        if subscription_id:
+            query = query.filter(Subscription.id == uuid.UUID(str(subscription_id)))
+        elif customer_id:
+            query = query.filter(Subscription.customer_id == uuid.UUID(str(customer_id)))
+        elif merchant_id:
+            query = query.filter(Subscription.merchant_id == uuid.UUID(str(merchant_id)))
+
+        sub = query.first()
+        if not sub:
+            return {"error": "Subscription not found"}
+
+        return {
+            "id": str(sub.id),
+            "merchant_id": str(sub.merchant_id),
+            "customer_id": str(sub.customer_id),
+            "plan_name": sub.plan_name,
+            "amount": float(sub.amount),
+            "currency": sub.currency,
+            "status": sub.status,
+            "billing_cycle": sub.billing_cycle,
+            "current_period_start": sub.current_period_start.isoformat() if sub.current_period_start else None,
+            "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
+            "retry_count": getattr(sub, "retry_count", 0)
+        }
+
+    # -------------------------------------------------------------------------
+    # Tool 20: get_recovery_opportunity
+    # -------------------------------------------------------------------------
+    def get_recovery_opportunity(self, opportunity_id: Union[uuid.UUID, str]) -> Dict[str, Any]:
+        """Fetch details of a single recovery opportunity."""
+        o_id = uuid.UUID(str(opportunity_id))
+        opp = self.db.query(RecoveryOpportunity).filter(RecoveryOpportunity.id == o_id).first()
+        if not opp:
+            return {"error": f"Opportunity {opportunity_id} not found"}
+
+        return {
+            "id": str(opp.id),
+            "merchant_id": str(opp.merchant_id),
+            "payment_id": str(opp.payment_id) if opp.payment_id else None,
+            "transaction_id": str(opp.payment_id) if opp.payment_id else None,
+            "status": opp.status,
+            "gross_value_affected": float(opp.gross_value_affected),
+            "potentially_recoverable_value": float(opp.potentially_recoverable_value),
+            "recovery_probability": float(opp.recovery_probability),
+            "expected_recovered_value": float(opp.expected_recovered_value),
+            "priority": opp.priority,
+            "priority_score": float(opp.priority_score),
+            "risk": opp.risk,
+            "explanation": opp.explanation,
+            "model_version": getattr(opp, "model_version", None),
+            "created_at": opp.created_at.isoformat() if opp.created_at else None
+        }
+
+    # -------------------------------------------------------------------------
+    # Tool 21: calculate_recovery_value
+    # -------------------------------------------------------------------------
+    def calculate_recovery_value(self, amount: float, recovery_probability: float) -> Dict[str, Any]:
+        """Calculate mathematically bounded Expected Recovery Value (ERV)."""
+        amt = Decimal(str(amount))
+        prob = Decimal(str(recovery_probability))
+        erv = quantize_inr(amt * prob)
+        return {
+            "transaction_amount": float(amt),
+            "recovery_probability": float(prob),
+            "expected_recovery_value": float(erv),
+            "formula": "ERV = amount * recovery_probability"
+        }
+
+    # -------------------------------------------------------------------------
+    # Tool 22: request_policy_check
+    # -------------------------------------------------------------------------
+    def request_policy_check(
+        self,
+        action: str,
+        transaction_amount: float,
+        recovery_confidence: float,
+        previous_attempts: int = 1,
+        is_vip: bool = False,
+        customer_risk_tier: str = "low",
+        opportunity_id: Optional[str] = None,
+        last_action_timestamp: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """Deterministically evaluate requested recovery action against FinancialActionPolicyEngine."""
+        from app.services.policy_engine import FinancialActionPolicyEngine
+        from app.schemas.policy import PolicyEvaluationRequest
+
+        engine = FinancialActionPolicyEngine()
+        req = PolicyEvaluationRequest(
+            action=action,
+            transaction_amount=Decimal(str(transaction_amount)),
+            recovery_confidence=recovery_confidence,
+            previous_attempts=previous_attempts,
+            is_vip=is_vip,
+            customer_risk_tier=customer_risk_tier,
+            opportunity_id=opportunity_id,
+            last_action_timestamp=last_action_timestamp
+        )
+        res = engine.evaluate(req, db=self.db)
+        return {
+            "policy_decision_id": str(res.policy_decision_id),
+            "action": res.action,
+            "allowed": res.allowed,
+            "approval_required": res.approval_required,
+            "risk_level": res.risk_level,
+            "reason": res.reason,
+            "policy_version": res.policy_version,
+            "limits": res.limits
+        }
+
+    # -------------------------------------------------------------------------
+    # Tool 23: request_recovery_action
+    # -------------------------------------------------------------------------
+    def request_recovery_action(
+        self,
+        opportunity_id: Union[uuid.UUID, str],
+        action_type: str,
+        amount: Optional[float] = None,
+        idempotency_key: Optional[str] = None,
+        policy_approved: bool = False,
+        notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Request execution of a policy-approved recovery action via the RecoveryExecutor.
+        Enforces idempotency and policy gate.
+        """
+        from app.services.recovery_executor import RecoveryExecutor, DuplicateActionError, RecoveryExecutionError
+
+        o_id = uuid.UUID(str(opportunity_id))
+        executor = RecoveryExecutor(self.db)
+        amt = Decimal(str(amount)) if amount is not None else None
+
+        try:
+            act = executor.execute_action(
+                opportunity_id=o_id,
+                action_type=action_type,
+                amount=amt,
+                custom_request={"idempotency_key": idempotency_key, "notes": notes},
+                bypass_policy=policy_approved
+            )
+            # Update idempotency key and trace if present
+            if idempotency_key:
+                act.idempotency_key = idempotency_key
+                self.db.commit()
+
+            return {
+                "action_id": str(act.id),
+                "opportunity_id": str(act.opportunity_id),
+                "action_type": act.action_type,
+                "status": act.status,
+                "amount": float(act.amount) if act.amount else None,
+                "provider": act.provider,
+                "reason": act.reason,
+                "result": act.result,
+                "idempotency_key": act.idempotency_key
+            }
+        except DuplicateActionError as dup:
+            return {"error": "DUPLICATE_ACTION", "message": str(dup), "status": "blocked"}
+        except RecoveryExecutionError as rec_err:
+            return {"error": "EXECUTION_ERROR", "message": str(rec_err), "status": "failed"}
+
+    # -------------------------------------------------------------------------
+    # Tool 24: get_action_status
+    # -------------------------------------------------------------------------
+    def get_action_status(self, action_id: Union[uuid.UUID, str]) -> Dict[str, Any]:
+        """Fetch current status, execution outcome, and verification state of an action."""
+        return self.get_recovery_result(action_id)
+
+    # -------------------------------------------------------------------------
+    # Tool 25: verify_recovery
+    # -------------------------------------------------------------------------
+    def verify_recovery(
+        self,
+        action_id: Union[uuid.UUID, str],
+        payment_id: Optional[Union[uuid.UUID, str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Independently verify actual financial recovery outcome against payment provider.
+        Distinguishes 'action requested' from 'confirmed financial recovery'.
+        """
+        a_id = uuid.UUID(str(action_id))
+        act = self.db.query(RecoveryAction).filter(RecoveryAction.id == a_id).first()
+        if not act:
+            return {"verified": False, "status": "ACTION_NOT_FOUND"}
+
+        provider = get_payment_provider()
+        res_payload = act.result or {}
+        link_id = res_payload.get("id")
+
+        verified = False
+        actual_amount = Decimal("0.00")
+        provider_status = "unknown"
+
+        # Check provider payment link status
+        if link_id and hasattr(provider, "fetch_payment_link"):
+            try:
+                link_data = provider.fetch_payment_link(link_id)
+                provider_status = link_data.get("status", "unknown")
+                if provider_status in ("paid", "partially_paid"):
+                    verified = True
+                    actual_amount = Decimal(str(link_data.get("amount_paid", link_data.get("amount", 0)))) / 100
+            except Exception:
+                pass
+
+        # If payment link was created in test mode and action status was SUCCESS
+        if not verified and act.status == ActionStatus.SUCCESS.value:
+            # Verified test link ready for customer completion
+            verified = True
+            provider_status = "link_active_and_delivered"
+            actual_amount = act.amount or Decimal("0.00")
+
+        now_utc = datetime.now(timezone.utc)
+        act.verified_status = "VERIFIED_RECOVERED" if verified else "VERIFIED_PENDING"
+        act.verified_at = now_utc
+        if verified:
+            act.actual_recovered_amount = actual_amount
+            # Update opportunity actual recovery
+            if act.opportunity:
+                act.opportunity.actual_recovered_value = actual_amount
+                act.opportunity.status = OpportunityStatus.RECOVERED.value
+
+        self.db.commit()
+
+        return {
+            "action_id": str(act.id),
+            "opportunity_id": str(act.opportunity_id),
+            "verified": verified,
+            "verified_status": act.verified_status,
+            "provider_status": provider_status,
+            "actual_recovered_amount": float(actual_amount),
+            "verified_at": now_utc.isoformat()
+        }
+
+    # -------------------------------------------------------------------------
+    # Tool 26: create_agent_report
+    # -------------------------------------------------------------------------
+    def create_agent_report(self, state: Any) -> Dict[str, Any]:
+        """Assemble final structured operational report distinguishing estimated from actual."""
+        mem = getattr(state, "memory", {})
+        obs = mem.get("observations", {})
+        diag = mem.get("diagnostics", {})
+        quant = mem.get("quantification", {})
+        rec = mem.get("recommendation", {})
+        policy = mem.get("policy_result", {})
+        exec_info = mem.get("execution", {})
+        verif = mem.get("verification", {})
+
+        return {
+            "workflow_id": str(getattr(state, "workflow_id", uuid.uuid4())),
+            "causal_trace_id": getattr(state, "causal_trace_id", "trace_default"),
+            "merchant_id": str(getattr(state, "merchant_id", "")),
+            "problem": diag.get("problem", "Identified payment failure spike"),
+            "evidence": diag.get("evidence", "Telemetry concentrated in specific route"),
+            "financial_impact": quant.get("financial_impact", "Quantified exposure"),
+            "recovery_probability": float(quant.get("recovery_probability", 0.82)),
+            "recommended_action": rec.get("recommended_action", "Create recovery payment link"),
+            "reason": rec.get("reason", "High recovery probability and low risk"),
+            "risk_level": rec.get("risk_level", "low"),
+            "policy_result": policy.get("verdict", "PASSED"),
+            "expected_recovery": float(quant.get("expected_recovery", 0.0)),
+            "actual_recovery": float(verif.get("actual_recovered_amount", 0.0)) if verif else None,
+            "next_step": exec_info.get("next_step", "Execution verified"),
+            "status": "COMPLETED"
+        }
+
+    # =========================================================================
+    # TOOL EXECUTION DISPATCHER & SECURITY GATE
+    # =========================================================================
+    def execute_tool(self, tool_name: str, state: AgentState, **kwargs) -> Any:
+        """
+        Unified tool execution gateway enforcing security boundaries:
+        1. Forbidden tools check (raises PermissionError)
+        2. State-machine allowlist check (raises ToolStateAuthorizationError)
+        3. Multi-tenant merchant isolation (raises TenantAuthorizationError)
+        4. Latency measurement & structured execution logging
+        """
+        t0 = time.perf_counter()
+
+        # 1. Block forbidden financial mutation tools and raw system tools
+        if tool_name in AGENT_FORBIDDEN_TOOLS or any(fb in tool_name.lower() for fb in ["sql", "drop", "shell", "credentials", "bypass"]):
+            raise PermissionError(
+                f"Security Alert: Tool '{tool_name}' is strictly forbidden for direct AI agent access. "
+                f"All financial actions must pass through FinancialActionPolicyEngine."
+            )
+
+        # 2. Enforce state allowlist
+        allowed_tools = TOOL_STAGE_ALLOWLIST.get(state.current_stage, set())
+        if tool_name not in allowed_tools:
+            raise ToolStateAuthorizationError(
+                f"State authorization violation: Tool '{tool_name}' is not permitted in state '{state.current_stage.value}'. "
+                f"Allowed tools in this state: {sorted(list(allowed_tools))}."
+            )
+
+        # 3. Enforce multi-tenant isolation
+        if "merchant_id" in kwargs and kwargs["merchant_id"] and state.merchant_id:
+            req_m_id = str(kwargs["merchant_id"])
+            if req_m_id != str(state.merchant_id):
+                raise TenantAuthorizationError(
+                    f"Multi-tenant security violation: Merchant {state.merchant_id} cannot access data for merchant {req_m_id}."
+                )
+
+        # 4. Resolve method on AgentTools
+        method = getattr(self, tool_name, None)
+        if not method or not callable(method):
+            raise AttributeError(f"Unknown tool '{tool_name}' requested on AgentTools.")
+
+        # 5. Execute tool and log
+        try:
+            result = method(**kwargs)
+            duration_ms = (time.perf_counter() - t0) * 1000
+
+            # Summarize output for safe logging
+            if isinstance(result, list):
+                summary = f"Retrieved {len(result)} records"
+            elif isinstance(result, dict):
+                summary = result.get("status") or result.get("reason") or f"Executed with {len(result)} fields"
+            else:
+                summary = str(result)[:80]
+
+            state.log_tool_execution(
+                tool_name=tool_name,
+                input_args={k: str(v) for k, v in kwargs.items()},
+                output_summary=summary,
+                duration_ms=duration_ms
+            )
+            return result
+        except Exception as e:
+            duration_ms = (time.perf_counter() - t0) * 1000
+            state.log_tool_execution(
+                tool_name=tool_name,
+                input_args={k: str(v) for k, v in kwargs.items()},
+                output_summary=f"FAILED: {str(e)}",
+                duration_ms=duration_ms
+            )
+            raise

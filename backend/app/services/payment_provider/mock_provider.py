@@ -188,3 +188,32 @@ class MockPaymentProvider(PaymentProvider):
             hashlib.sha256
         ).hexdigest()
         return hmac.compare_digest(expected, signature)
+
+    def normalize_payment_response(self, raw: Dict[str, Any]) -> Any:
+        from app.schemas.payment_provider import PaymentResult
+        amt_paise = raw.get("amount", 0)
+        amt_inr = Decimal(amt_paise) / Decimal(100) if amt_paise else Decimal("0.00")
+        created_ts = raw.get("created_at")
+        if isinstance(created_ts, (int, float)):
+            created_dt = datetime.fromtimestamp(created_ts, tz=timezone.utc)
+        else:
+            created_dt = datetime.now(timezone.utc)
+
+        return PaymentResult(
+            provider="mock",
+            provider_payment_id=raw.get("id", "pay_mock_unknown"),
+            provider_order_id=raw.get("order_id"),
+            status=raw.get("status", "captured"),
+            amount=amt_inr,
+            currency=raw.get("currency", "INR"),
+            created_at=created_dt,
+            error_code=raw.get("error_code"),
+            error_description=raw.get("error_description"),
+            metadata=raw.get("notes", {}),
+            raw_response=raw
+        )
+
+    def fetch_normalized_payment(self, payment_id: str) -> Any:
+        raw = self.fetch_payment(payment_id)
+        return self.normalize_payment_response(raw)
+

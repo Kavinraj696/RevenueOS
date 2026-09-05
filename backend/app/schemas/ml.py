@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class RecoveryProbabilityResponse(BaseModel):
     transaction_id: uuid.UUID
@@ -15,12 +16,18 @@ class RecoveryProbabilityResponse(BaseModel):
     input_features: Dict[str, Any]
     timestamp: datetime
 
+    # Stage 4 Explainability & Business Prioritization
+    expected_recovery_value: Optional[Decimal] = Field(None, description="recovery_probability * eligible_revenue")
+    opportunity_score: Optional[float] = Field(None, description="Deterministic opportunity score between 0 and 100")
+    contributing_factors: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Top positive and negative contributing factors")
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class MLMetricsResponse(BaseModel):
     training_timestamp: str
     train_samples: int
     test_samples: int
     baseline_model: Dict[str, Any]
-    improved_model: Dict[str, Any]
-    comparison: Dict[str, Any]
+    improved_model: Optional[Dict[str, Any]] = None
+    comparison: Optional[Dict[str, Any]] = None

@@ -65,8 +65,16 @@ def reset_demo_database(
 ):
     """Reset database and regenerate synthetic data deterministically."""
     bind_engine = db.get_bind()
-    Base.metadata.drop_all(bind=bind_engine)
     Base.metadata.create_all(bind=bind_engine)
+    if bind_engine.dialect.name == "postgresql":
+        from sqlalchemy import text
+        table_names = [f'"{table.name}"' for table in Base.metadata.sorted_tables]
+        if table_names:
+            db.execute(text(f"TRUNCATE TABLE {', '.join(table_names)} RESTART IDENTITY CASCADE;"))
+            db.commit()
+    else:
+        Base.metadata.drop_all(bind=bind_engine)
+        Base.metadata.create_all(bind=bind_engine)
 
     generator = SyntheticDataGenerator(seed=payload.seed)
     results = generator.generate_all(db)

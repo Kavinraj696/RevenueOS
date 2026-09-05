@@ -31,7 +31,8 @@ Modern Indian e-commerce merchants lose **12% to 28% of transaction volume** to 
 | **Next.js 14+ Client Shell** | 🔵 PLANNED | Alternative React/Next.js client tier (currently implemented via FastAPI static templates). |
 | **FastAPI Backend Gateway** | ✅ IMPLEMENTED | Asynchronous REST backend in `backend/app/main.py` with 17 v1 routers, CORS, and Pydantic v2 schemas. |
 | **Relational Database** | ✅ IMPLEMENTED | 16 SQLAlchemy models in `backend/app/models/` backed by SQLite (`revenueos.db`) and PostgreSQL compatible. |
-| **Leak Detection Engine** | ✅ IMPLEMENTED | `app/services/leak_detection.py` detecting payment failures, checkout abandonment, and subscription anomalies. |
+| **Synthetic Revenue Data & Simulation** | ✅ IMPLEMENTED | Stage 2 deterministic generator (`SyntheticDataGenerator`), 6 commerce scenarios, ground truth registry, and 10-point validation engine in `backend/app/synthetic/`. |
+| **Leak Detection Engine** | ✅ IMPLEMENTED | Stage 3 deterministic engine (`app/services/leak_detection.py`), 5 detection vectors, baseline partitioning, segment ranking, RAR formula, and deduplication documented in `docs/REVENUE_LEAK_DETECTION.md`. |
 | **AI Recovery Agent** | ✅ IMPLEMENTED | `app/services/agent/recovery_agent.py` running a 9-stage state machine with 15 guarded tools. |
 | **ML Predictive Models** | ✅ IMPLEMENTED | `app/ml/models.py` implementing Models 1, 2, and 3 with scikit-learn pipelines, offline registry, and evaluation reports. |
 | **Policy Engine** | ✅ IMPLEMENTED | `app/services/policy_engine.py` evaluating actions against ₹15k approval gates, cooldowns, and retry limits. |
@@ -39,40 +40,59 @@ Modern Indian e-commerce merchants lose **12% to 28% of transaction volume** to 
 | **Webhook Processing Engine** | ✅ IMPLEMENTED | `app/services/webhook_engine.py` with HMAC-SHA256 verification, unique event deduplication, and state reconciliation. |
 | **Audit Ledger & Timeline** | ✅ IMPLEMENTED | Append-only `audit_events` logging causality chains with automatic secret scrubbing and UI timeline. |
 | **Security Controls** | ✅ IMPLEMENTED | Prompt injection regex blocker, tool allowlist, parameter validation, and tenant isolation. |
+| **Business Metrics & Validation (Stage 8)** | ✅ IMPLEMENTED | 18 KPIs, 9-stage recovery funnel, 10 diagnostic Q&As, Scenarios A–H + Canonical Golden Scenario in `app/services/demo_scenario_engine.py`. |
+| **Transparent ROI Engine (Stage 8)** | ✅ IMPLEMENTED | Strict financial truth, provider-verified settlement attribution, operating cost deduction, and multi-tenant ledger consistency in `app/api/v1/analytics.py`. |
 | **Multi-Tenant JWT Auth** | 🔵 PLANNED | Production enterprise authentication (currently operates with merchant ID query/dependency context). |
 | **Distributed Task Queue** | 🔵 PLANNED | Celery/Redis background worker queue for high-volume asynchronous webhook bursts. |
 
 ---
 
-## 4. End-to-End Recovery Lifecycle
+## 4. End-to-End Recovery Lifecycle & Architecture Flow
 
-The core operational lifecycle of RevenueOS follows an eight-stage causal progression:
+The authoritative operational lifecycle of RevenueOS demonstrates complete decoupling of cognitive reasoning from financial authorization:
 
 ```mermaid
 flowchart TD
-    E1["1. Transaction Failure<br/>(Payment / Subscription / Checkout)"] --> E2["2. Revenue Leak<br/>(Cluster Detected & Scored)"]
-    E2 --> E3["3. Recovery Opportunity<br/>(Prioritized by Gross RAR & P_rec)"]
-    E3 --> E4["4. AI Agent<br/>(9-Stage Investigation & Tool Reasoning)"]
-    E4 --> E5["5. Policy Engine<br/>(Deterministic Python Safety Rules)"]
+    N1["User / Event<br/>(Payment Failure / Abandonment / Mandate Drop)"] --> N2["Revenue Leak<br/>(Cluster Detected & Scored via Telemetry)"]
+    N2 --> N3["ML Recovery Intelligence<br/>(P_rec & ERV Calculated via Models 1, 2, 3)"]
+    N3 --> N4["AI Recovery Agent<br/>(9-Stage Investigation & Diagnostics)<br/><b>[NON-AUTHORITATIVE REASONING]</b>"]
+    N4 --> N5["Typed Tools Layer<br/>(Strict Allowlist & Tenant Isolation)"]
+    N5 --> N6["Policy Engine<br/>(Deterministic Python Safety Rules & Limits)<br/><b>[AUTHORITATIVE AUTHORIZATION GATE]</b>"]
     
-    E5 -- "Allowed (Auto)" --> E6["6. Recovery Action<br/>(PaymentProvider Adapter Execution)"]
-    E5 -- "Approval Required" --> E5A["Merchant Approval Queue"]
-    E5A -- "Approved" --> E6
-    E5A -- "Rejected" --> E5B["Opportunity Dismissed"]
-    E5 -- "Blocked" --> E5C["Execution Blocked"]
+    N6 -- "ALLOW (<= ₹15k)" --> N7A["Execution Pipeline"]
+    N6 -- "REQUIRE_APPROVAL (> ₹15k)" --> N6A["Merchant Approval Queue"]
+    N6A -- "Explicit Human Sign-Off" --> N7A
+    N6A -- "Rejected / Dismissed" --> N6B["Halt & Record Denial"]
+    N6 -- "DENY (Limit/Cooldown/Fraud)" --> N6B
     
-    E6 --> E7["7. Verification<br/>(HMAC-SHA256 Webhook Confirmation)"]
-    E7 --> E8["8. ROI Attribution<br/>(Net Recovered Value Ledger)"]
+    N7A --> N7["Payment Provider Adapter<br/>(RazorpayTestProvider / MockProvider - Test Mode Only)"]
+    N7 --> N8["Independent Verification<br/>(Payment Query & HMAC-Verified Webhooks)"]
+    N8 --> N9["Immutable Audit Ledger<br/>(Write-Only Causal Trace Trail)"]
+    N9 --> N10["Institutional ROI & Metrics<br/>(Net Recovered INR & Lift Attribution)"]
 ```
 
-1. **Transaction Event**: Failed payment attempts, abandoned checkout sessions, or missed subscription mandates are ingested.
-2. **Revenue Leak**: Telemetry engines cluster correlated failures into high-level leaks (e.g. gateway timeout surges).
-3. **Recovery Opportunity**: Granular recoverable opportunities are generated and prioritized by Expected Recovered Value ($\text{ERV} = \text{Amount} \times P_{\text{rec}}$).
-4. **AI Agent**: State machine gathers telemetry, isolates root cause, queries ML predictions, and selects an intervention.
-5. **Policy Engine**: Deterministic rules evaluate the proposed action against financial limits, cooldowns, and merchant policies.
-6. **Recovery Action**: Authorized actions (retries, payment links, dunning notifications) are executed via provider adapters.
-7. **Verification**: Inbound webhooks verify payment capture and reconcile the opportunity to `RECOVERED`.
-8. **ROI**: Actual recovered amounts update merchant financial metrics and before/after lift analyses.
+### Architectural Responsibilities
+- **LLM / AI Agent**: *Reasons, investigates, synthesizes root causes, and recommends actions.* Strictly non-authoritative; zero financial execution APIs.
+- **ML Layer**: *Predicts, ranks, and estimates.* Produces calibrated probabilities ($P_{\text{rec}}$) and Expected Recovery Value ($\text{ERV}$).
+- **Policy Engine**: *Authorizes or blocks.* Authoritative, deterministic gate enforcing amount ceilings, retry limits, cooldowns, and human approvals.
+- **Payment Provider**: *Executes in test mode.* Abstracted adapter preventing live financial mutations during testing.
+- **Verification**: *Independently confirms outcome.* Distinguishes execution from actual verified financial settlement.
+- **Audit Ledger**: *Records immutable causality.* Binds all stages from trigger to verified ROI under a single `causal_trace_id`.
+
+### 4.1 Stage 6 Webhook-Driven Recovery & Reconciliation Pipeline
+
+```mermaid
+flowchart LR
+    RA["Approved Recovery Action<br/>(Policy: ALLOW)"] --> RP["Razorpay Test Provider<br/>(Sandbox Only)"]
+    RP --> PE["Payment Event<br/>(Sandbox Trigger)"]
+    PE --> WH["Webhook Ingestion<br/>(HMAC-SHA256 & <1MB)"]
+    WH --> ID["Idempotency Engine<br/>(SHA-256 Payload Hash)"]
+    ID --> ES["Event Store<br/>(WebhookEvent Ingestion)"]
+    ES --> RC["Reconciliation Service<br/>(Direct Provider State Query)"]
+    RC --> VF["Independent Verification<br/>(Amount & Currency Match)"]
+    VF --> AR["Actual Recovery<br/>(Action: VERIFIED / Opp: RECOVERED)"]
+    AR --> ROI["Institutional ROI<br/>(Net Recovered Rupees)"]
+```
 
 ---
 
@@ -231,6 +251,16 @@ flowchart TB
 * **Implementation Status:** ✅ IMPLEMENTED
 * **Location:** `backend/app/security.py`
 * **Controls:** 13 prompt injection regex detection patterns, agent tool allowlist, parameterized SQLAlchemy queries, tenant isolation via `merchant_id`, and secret isolation in backend `.env`.
+
+### 6.11 Stage 8 Business Validation, Explainability & ROI Architecture
+* **Implementation Status:** ✅ IMPLEMENTED
+* **Location:** `backend/app/api/v1/analytics.py`, `backend/app/api/v1/opportunities.py`, `backend/app/services/demo_scenario_engine.py`
+* **Core Capabilities:**
+  - **18 Operational & Financial KPIs**: Computes volume processed, revenue at risk, recovery yield, policy denial rates, and provider success rates.
+  - **9-Stage Recovery Funnel**: Tracks drop-off across Transactions -> Potential Leaks -> Confirmed Leaks -> Opportunities -> Recommended -> Policy Allowed -> Executed -> Verified -> Recovered Revenue.
+  - **Deep Explainability Engine**: Generates 10 diagnostic plain-English Q&As, structured AI rationale, deterministic policy breakdowns, chronological timeline, and causal database audit links.
+  - **Strict Financial Truth ROI**: Guarantees zero speculative revenue booking by attributing recovery strictly to verified provider reconciliations ($R_{act} = \sum a.\text{actual\_recovered\_amount}$) with transparent system cost deduction ($C_{sys} = N_{verified} \times ₹15.00 + ₹150.00$).
+  - **Deterministic Scenarios Engine**: Coordinates Canonical Golden Scenario (10-step full pipeline) and Scenarios A–H covering positive recoveries, negative policy blocks, approval gates, provider timeouts, webhook idempotency, and amount mismatches.
 
 ---
 

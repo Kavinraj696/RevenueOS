@@ -1,87 +1,76 @@
 import uuid
 import json
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.models import Payment, ModelPrediction
 from app.schemas.ml import RecoveryProbabilityResponse, MLMetricsResponse
-from app.ml.pipeline import PaymentFeatureExtractor
-from app.ml.training import get_recovery_model, METRICS_PATH, MLTrainingPipeline
+from app.ml.inference import InferenceService
+from app.ml.registry import registry
+from app.ml.training import METRICS_PATH, MLTrainingPipeline
 
 router = APIRouter()
+
+
+@router.post("/predict/{transaction_id}", response_model=RecoveryProbabilityResponse)
+def predict_transaction_recovery(
+    transaction_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    POST endpoint for Phase 26 ML Recovery Probability Prediction.
+    Executes point-in-time inference via InferenceService and logs audit record.
+    """
+    inference_service = InferenceService(db)
+    try:
+        res = inference_service.predict_recovery_probability(
+            transaction_id=transaction_id,
+            persist_audit=True,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Inference error: {e}")
+
+    return RecoveryProbabilityResponse(
+        transaction_id=res["transaction_id"],
+        model_name=res["model_name"],
+        model_version=res["model_version"],
+        prediction=Decimal(str(round(res["recovery_probability"], 4))),
+        recovery_probability=res["recovery_probability"],
+        confidence=res["confidence"],
+        input_reference=f"payment:{res['transaction_id']}",
+        input_features=res["input_features"],
+        timestamp=res["created_at"],
+        expected_recovery_value=res["expected_recovery_value"],
+        opportunity_score=res["opportunity_score"],
+        contributing_factors=res["contributing_factors"],
+    )
+
 
 @router.get("/recovery-probability/{transaction_id}", response_model=RecoveryProbabilityResponse)
 def get_payment_recovery_probability(
     transaction_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Predict the probability that a failed transaction will be successfully recovered.
-    Runs Model 1 inference and logs the prediction audit record into model_predictions.
+    GET endpoint for ML recovery probability prediction.
+    Maintains full backward compatibility while using InferenceService.
     """
-    payment = db.query(Payment).filter(Payment.id == transaction_id).first()
-    if not payment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Transaction with id {transaction_id} not found"
-        )
+    return predict_transaction_recovery(transaction_id=transaction_id, db=db)
 
-    # 1. Feature Extraction
-    features = PaymentFeatureExtractor.extract_from_payment(payment)
-
-    # 2. Model Inference
-    model = get_recovery_model(db)
-    prob, conf = model.predict_single(features)
-
-    # 3. Store Prediction Audit Record
-    now_utc = datetime.now(timezone.utc)
-    input_ref = f"payment:{payment.id}"
-    pred_dec = Decimal(str(round(prob, 4)))
-    conf_dec = Decimal(str(round(conf, 4)))
-
-    # Serializable features for JSON column
-    serializable_features = {
-        k: (v.isoformat() if isinstance(v, datetime) else v)
-        for k, v in features.items()
-    }
-
-    prediction_record = ModelPrediction(
-        id=uuid.uuid4(),
-        model_name=model.MODEL_NAME,
-        model_version=model.MODEL_VERSION,
-        entity_type="payment",
-        entity_id=payment.id,
-        input_features_json=serializable_features,
-        prediction=pred_dec,
-        confidence=conf_dec,
-        input_reference=input_ref,
-    )
-    db.add(prediction_record)
-    db.commit()
-
-    return RecoveryProbabilityResponse(
-        transaction_id=payment.id,
-        model_name=model.MODEL_NAME,
-        model_version=model.MODEL_VERSION,
-        prediction=pred_dec,
-        recovery_probability=prob,
-        confidence=conf,
-        input_reference=input_ref,
-        input_features=serializable_features,
-        timestamp=now_utc
-    )
 
 @router.get("/metrics", response_model=Dict[str, Any])
 def get_ml_metrics(db: Session = Depends(get_db)):
     """
-    Retrieve real evaluation metrics comparing the baseline model
-    against the improved production model.
+    Retrieve real evaluation metrics comparing the naive baseline
+    against Model 1 (calibrated) and Model 2 (opportunity ranking).
     """
     if not METRICS_PATH.exists():
         pipeline = MLTrainingPipeline(db)
@@ -90,3 +79,11 @@ def get_ml_metrics(db: Session = Depends(get_db)):
     with open(METRICS_PATH, "r") as f:
         metrics_data = json.load(f)
     return metrics_data
+
+
+@router.get("/models", response_model=List[Dict[str, Any]])
+def list_registered_models():
+    """
+    List all registered models, versions, active status, and evaluation summaries.
+    """
+    return registry.list_models()

@@ -58,6 +58,14 @@ class FinancialActionPolicyEngine:
         cooldown_secs = request.cooldown_seconds if request.cooldown_seconds is not None else self.config.cooldown_seconds
         assessed_risk = (request.risk_level or "low").lower()
 
+        alias_map = {
+            "RETRY": PolicyAction.RETRY_ALLOWED_PAYMENT.value,
+            "RETRY_PAYMENT": PolicyAction.RETRY_ALLOWED_PAYMENT.value,
+            "PAYMENT_LINK": PolicyAction.CREATE_PAYMENT_LINK.value,
+            "NOTIFICATION": PolicyAction.SEND_RECOVERY_NOTIFICATION.value,
+        }
+        raw_action = alias_map.get(raw_action, raw_action)
+
         allowed_actions_set = {a.value for a in PolicyAction}
 
         # Snapshot of active governance limits
@@ -500,6 +508,13 @@ class FinancialActionPolicyEngine:
             stage_4_execution=stage_4
         )
 
+        if approval_required:
+            computed_decision = "REQUIRE_APPROVAL"
+        elif not allowed:
+            computed_decision = "DENY"
+        else:
+            computed_decision = "ALLOW"
+
         return PolicyDecisionResponse(
             policy_decision_id=decision_id,
             action=action,
@@ -509,5 +524,16 @@ class FinancialActionPolicyEngine:
             approval_required=approval_required,
             limits=limits,
             timestamp=timestamp,
-            pipeline=pipeline
+            pipeline=pipeline,
+            policy_version="policy_v1",
+            rules_evaluated=[
+                "action_validity",
+                "opportunity_status",
+                "cooldown_check",
+                "retry_cap",
+                "customer_risk",
+                "confidence_threshold",
+                "amount_tiering"
+            ],
+            decision=computed_decision
         )
