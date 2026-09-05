@@ -58,4 +58,16 @@ __all__ = [
     "ActionCandidate",
     "RecoveryOpportunityResponse",
     "RecoveryOpportunitiesListResponse",
+    "ScenarioStepResult",
+    "DemoScenarioMeta",
+    "DemoScenarioCatalogResponse",
+    "DemoScenarioRunResponse",
 ]
+
+from app.schemas.demo import (
+    ScenarioStepResult,
+    DemoScenarioMeta,
+    DemoScenarioCatalogResponse,
+    DemoScenarioRunResponse,
+)
+

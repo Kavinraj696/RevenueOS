@@ -1,10 +1,15 @@
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy import String, Text, ForeignKey, Index, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
 from app.models.enums import AuditActor
+
+if TYPE_CHECKING:
+    from app.models.merchant import Merchant
+    from app.models.agent_decision import AgentDecision
+    from app.models.recovery_action import RecoveryAction
 
 class AuditEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "audit_events"
@@ -49,8 +54,10 @@ class AuditEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             kwargs["summary"] = kwargs["message"]
 
         # Auto-map metadata to metadata_json
-        if "metadata" in kwargs and "metadata_json" not in kwargs:
-            kwargs["metadata_json"] = kwargs.pop("metadata")
+        if "metadata" in kwargs:
+            meta_val = kwargs.pop("metadata")
+            if "metadata_json" not in kwargs:
+                kwargs["metadata_json"] = meta_val
 
         # Map related_entity_id to specific FK if appropriate
         if "related_entity_id" in kwargs and kwargs.get("related_entity_id"):

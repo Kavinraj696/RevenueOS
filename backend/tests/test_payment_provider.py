@@ -99,11 +99,13 @@ def test_razorpay_test_provider_guardrails():
     assert provider.verify_webhook_signature(body, "bad_sig", secret="secret_xyz") is False
 
 
-def test_provider_registry_automatic_fallback():
+def test_provider_registry_automatic_fallback(monkeypatch):
     """
     Test: If RAZORPAY_TEST mode is requested but credentials are missing or placeholders,
     the registry must automatically fall back to MockPaymentProvider without failing.
     """
+    monkeypatch.setattr(settings, "RAZORPAY_KEY_ID", "rzp_test_placeholder_key")
+    monkeypatch.setattr(settings, "RAZORPAY_KEY_SECRET", "placeholder_secret")
     registry = PaymentProviderRegistry()
 
     # When credentials are placeholder strings
@@ -122,6 +124,7 @@ def test_provider_registry_automatic_fallback():
     # Revert to MOCK
     registry.set_mode(ProviderMode.MOCK)
     assert registry.get_status()["effective_provider"] == "mock"
+
 
 
 def test_webhook_signature_verification_rejected(db_session):

@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Index, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, get_utc_now
 from app.models.enums import PaymentAttemptStatus
+
+if TYPE_CHECKING:
+    from app.models.payment import Payment
 
 class PaymentAttempt(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "payment_attempts"

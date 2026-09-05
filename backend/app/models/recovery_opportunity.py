@@ -1,11 +1,19 @@
 import uuid
 from decimal import Decimal
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Numeric, DateTime, ForeignKey, Index, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin, get_utc_now
 from app.models.enums import OpportunityStatus
+
+if TYPE_CHECKING:
+    from app.models.revenue_leak import RevenueLeak
+    from app.models.merchant import Merchant
+    from app.models.customer import Customer
+    from app.models.payment import Payment
+    from app.models.agent_decision import AgentDecision
+    from app.models.recovery_action import RecoveryAction
 
 class RecoveryOpportunity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "recovery_opportunities"

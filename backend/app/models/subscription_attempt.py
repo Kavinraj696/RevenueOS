@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy import String, DateTime, ForeignKey, Index, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, get_utc_now
 from app.models.enums import PaymentAttemptStatus
+
+if TYPE_CHECKING:
+    from app.models.subscription import Subscription
 
 class SubscriptionAttempt(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "subscription_attempts"

@@ -1,7 +1,16 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, TYPE_CHECKING
 from sqlalchemy import String, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.customer import Customer
+    from app.models.payment import Payment
+    from app.models.subscription import Subscription
+    from app.models.checkout_session import CheckoutSession
+    from app.models.revenue_leak import RevenueLeak
+    from app.models.recovery_opportunity import RecoveryOpportunity
+    from app.models.audit_event import AuditEvent
 
 class Merchant(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "merchants"

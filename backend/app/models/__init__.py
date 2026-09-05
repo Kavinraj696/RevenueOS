@@ -1,4 +1,5 @@
 from app.models.enums import (
+    StrEnum,
     PaymentStatus,
     PaymentAttemptStatus,
     SubscriptionStatus,
@@ -8,9 +9,13 @@ from app.models.enums import (
     DeviceType,
     LeakType,
     OpportunityStatus,
+    OpportunityPriority,
     ActionType,
     ActionStatus,
     RiskSegment,
+    PolicyAction,
+    AuditEventType,
+    AuditActor,
 )
 from app.models.merchant import Merchant
 from app.models.customer import Customer
@@ -30,6 +35,7 @@ from app.models.model_prediction import ModelPrediction
 from app.models.experiment import Experiment
 
 __all__ = [
+    "StrEnum",
     "PaymentStatus",
     "PaymentAttemptStatus",
     "SubscriptionStatus",
@@ -39,9 +45,13 @@ __all__ = [
     "DeviceType",
     "LeakType",
     "OpportunityStatus",
+    "OpportunityPriority",
     "ActionType",
     "ActionStatus",
     "RiskSegment",
+    "PolicyAction",
+    "AuditEventType",
+    "AuditActor",
     "Merchant",
     "Customer",
     "Payment",

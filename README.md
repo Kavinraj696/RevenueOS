@@ -122,7 +122,7 @@ uvicorn app.main:app --reload --port 8000
 The codebase includes comprehensive automated tests covering all engines, providers, policy guardrails, and audit ledgers:
 
 ```bash
-# Run full test suite (89 passing tests)
+# Run full test suite (142 passing tests, 100% pass rate)
 pytest backend/tests -v
 ```
 

@@ -61,6 +61,8 @@ class OpportunityStatus(StrEnum):
     RECOVERED = "recovered"
     FAILED = "failed"
     DISMISSED = "dismissed"
+    NEW = "open"
+    ANALYZED = "action_selected"
 
 class ActionType(StrEnum):
     CREATE_PAYMENT_LINK = "create_payment_link"
@@ -77,6 +79,9 @@ class ActionType(StrEnum):
     ALT_METHOD = "alt_method"
     SUBSCRIPTION_WORKFLOW = "subscription_workflow"
     ESCALATE = "escalate"
+    TRIGGER_SUBSCRIPTION_RECOVERY = "subscription_recovery"
+    REQUEST_MERCHANT_APPROVAL = "request_merchant_approval"
+    BLOCK_ACTION = "block_action"
 
 class ActionStatus(StrEnum):
     PENDING = "pending"

@@ -1,10 +1,15 @@
 import uuid
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Numeric, ForeignKey, Index, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
 from app.models.enums import SubscriptionStatus
+
+if TYPE_CHECKING:
+    from app.models.merchant import Merchant
+    from app.models.customer import Customer
+    from app.models.subscription_attempt import SubscriptionAttempt
 
 class Subscription(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "subscriptions"

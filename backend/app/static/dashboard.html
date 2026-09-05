@@ -783,6 +783,179 @@
     .mono {
       font-family: 'JetBrains Mono', monospace;
     }
+
+    /* Demo Scenario Modal Styles */
+    .demo-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .demo-modal-overlay.open {
+      display: flex;
+    }
+
+    .demo-modal-box {
+      width: 1120px;
+      max-width: 96vw;
+      max-height: 92vh;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 25px rgba(16, 185, 129, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalFade 0.2s ease-out;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .demo-modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .demo-modal-header h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .demo-modal-header p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .demo-modal-body {
+      padding: 22px 24px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .scenario-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 1024px) {
+      .scenario-cards-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .scenario-cards-grid { grid-template-columns: 1fr; }
+    }
+
+    .scenario-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      position: relative;
+    }
+
+    .scenario-card:hover {
+      background: rgba(37, 99, 235, 0.08);
+      border-color: rgba(37, 99, 235, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .scenario-card.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: #10b981;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+    }
+
+    .scenario-card-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      align-self: flex-start;
+      letter-spacing: 0.04em;
+    }
+
+    .scenario-card h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.3;
+    }
+
+    .scenario-card p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .demo-step-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .demo-step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .demo-step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .safety-proof-box {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 78, 59, 0.25));
+      border: 1.5px solid #10b981;
+      border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -824,6 +997,10 @@
       <li class="nav-item" onclick="switchView('roi')">
         <span class="nav-icon">📈</span> ROI / Analytics
       </li>
+      <li class="nav-item" onclick="openDemoModal()" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; font-weight: 600; margin-top: 6px;">
+        <span class="nav-icon">🎮</span> Demo Scenarios
+        <span class="badge badge-success" style="font-size: 0.65rem; padding: 2px 6px;">5 LIVE</span>
+      </li>
     </ul>
 
     <div style="padding: 16px; border-top: 1px solid var(--border-subtle); font-size: 0.75rem; color: var(--text-faint);">
@@ -851,6 +1028,9 @@
           <span class="provider-dot"></span>
           <span id="provider-mode-label">RAZORPAY TEST MODE</span>
         </div>
+        <button class="btn btn-primary btn-sm" onclick="openDemoModal()" style="background: linear-gradient(135deg, #10b981, #059669); border: 1px solid #34d399; box-shadow: 0 0 14px rgba(16, 185, 129, 0.35); font-weight: 700;">
+          <span>🎮</span> Run Demo Scenario
+        </button>
         <button class="btn btn-secondary btn-sm" onclick="resetDemoData()">Reset Data</button>
         <button class="btn btn-primary btn-sm" onclick="refreshCurrentView()">Refresh</button>
       </div>
@@ -1351,6 +1531,140 @@
           </button>
           <button class="btn btn-secondary" onclick="closeDrawer()">Close</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- DEMO SCENARIO ENGINE MODAL -->
+  <!-- ===================================================================== -->
+  <div id="demo-scenario-modal" class="demo-modal-overlay">
+    <div class="demo-modal-box">
+      <div class="demo-modal-header">
+        <div>
+          <h3><span>🎮</span> Razorpay RevenueOS — Demo Scenario Engine</h3>
+          <p>Execute live operational recovery workflows, ML probability prioritization, and verify deterministic financial safety guardrails.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeDemoModal()" style="padding: 4px 10px; font-size: 1rem;">✕</button>
+      </div>
+
+      <div class="demo-modal-body">
+        <!-- 5 Scenario Selector Cards -->
+        <div>
+          <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; letter-spacing: 0.04em;">
+            Select Demo Scenario to Execute:
+          </div>
+          <div class="scenario-cards-grid">
+            <div class="scenario-card active" id="card-payment_degradation" onclick="selectDemoScenario('payment_degradation')">
+              <span class="scenario-card-badge" style="background: var(--danger-bg); color: var(--danger);">SCENARIO 1</span>
+              <h4>Payment Degradation</h4>
+              <p>Detect anomaly → Bank/method/time cluster → RAR → Recommend → Execute safe recovery → Recovered revenue.</p>
+            </div>
+
+            <div class="scenario-card" id="card-checkout_abandonment" onclick="selectDemoScenario('checkout_abandonment')">
+              <span class="scenario-card-badge" style="background: var(--warning-bg); color: var(--warning);">SCENARIO 2</span>
+              <h4>Checkout Abandonment</h4>
+              <p>Detect high-value drop-offs (≥ ₹15,000) → ML recovery score → Prioritize → 1-click link → Simulate payment → Update ROI.</p>
+            </div>
+
+            <div class="scenario-card" id="card-subscription_failures" onclick="selectDemoScenario('subscription_failures')">
+              <span class="scenario-card-badge" style="background: var(--info-bg); color: var(--info);">SCENARIO 3</span>
+              <h4>Subscription Failures</h4>
+              <p>Detect failure spike → Identify subscriptions → Estimate recoverability → Trigger safe recovery workflow → Show result.</p>
+            </div>
+
+            <div class="scenario-card" id="card-recovery_failure" onclick="selectDemoScenario('recovery_failure')">
+              <span class="scenario-card-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">SCENARIO 4</span>
+              <h4>Recovery Failure & Fallback</h4>
+              <p>Primary action fails (gateway timeout) → Forensic diagnosis → Alternative bounded action → Execute → Succeed.</p>
+            </div>
+
+            <div class="scenario-card" id="card-unsafe_action" onclick="selectDemoScenario('unsafe_action')">
+              <span class="scenario-card-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">SCENARIO 5</span>
+              <h4>Unsafe Action (Safety Gate)</h4>
+              <p>High-value (₹1.25L) low-confidence (35%) candidate → AI recommends debit → Policy blocks automatic execution → Merchant approval required.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Runner Control -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px 18px;">
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #fff;" id="demo-selected-title">Scenario 1: Payment Degradation</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);" id="demo-selected-desc">Executes end-to-end anomaly detection, revenue-at-risk calculation, and recovery execution.</div>
+          </div>
+          <button class="btn btn-primary" id="demo-run-btn" onclick="runSelectedDemoScenario()" style="background: linear-gradient(135deg, #10b981, #059669); padding: 10px 22px; font-weight: 700; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);">
+            ⚡ Run Scenario Now
+          </button>
+        </div>
+
+        <!-- Execution Progress & Live Trace Container -->
+        <div id="demo-results-container" style="display: none; flex-direction: column; gap: 16px;">
+          <!-- Top Executive Banner -->
+          <div id="demo-summary-banner" style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-size: 0.75rem; font-weight: 600; color: #93c5fd; text-transform: uppercase;" id="demo-run-status">STATUS: SUCCESS</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 4px;" id="demo-run-summary">Scenario successfully completed.</div>
+            </div>
+            <div id="demo-metrics-badges" style="display: flex; gap: 10px;"></div>
+          </div>
+
+          <!-- Special Safety System Verified Banner (Appears for Scenario 5) -->
+          <div id="demo-safety-verified-box" class="safety-proof-box" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.6rem;">🛡️</span>
+                <div>
+                  <h4 style="font-size: 1.05rem; font-weight: 800; color: #34d399; letter-spacing: -0.01em;">FINANCIAL SAFETY SYSTEM VISIBLY VERIFIED</h4>
+                  <span style="font-size: 0.8rem; color: #a7f3d0;">Autonomous AI recommendation successfully intercepted and blocked by hardcoded Python policy rules.</span>
+                </div>
+              </div>
+              <span class="badge badge-success" style="font-size: 0.8rem; padding: 6px 12px; background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid #10b981;">
+                POLICY ENFORCED
+              </span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 12px; font-size: 0.82rem;">
+              <div>
+                <strong style="color: #cbd5e1;">AI Agent Proposed Action:</strong><br>
+                <span style="color: #f87171;" class="mono">CREATE_PAYMENT_LINK (Amount: ₹1,25,000.00 | Confidence: 35.0%)</span>
+              </div>
+              <div>
+                <strong style="color: #cbd5e1;">Deterministic Policy Verdict:</strong><br>
+                <span style="color: #34d399;" class="mono">ALLOWED: FALSE | APPROVAL REQUIRED: TRUE (Rule 6 & Rule 7)</span>
+              </div>
+            </div>
+            <div style="font-size: 0.78rem; color: #e2e8f0; line-height: 1.4;">
+              <strong>Forensic Guarantee:</strong> No financial action can bypass the Financial Action Policy Engine. High nominal value (> ₹50,000) and low ML confidence (< 60%) strictly prevented autonomous debit, routing the case to the Merchant Operator Approval Queue.
+            </div>
+          </div>
+
+          <!-- Step By Step Forensic Trail -->
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; letter-spacing: 0.04em;">
+              Step-by-Step Forensic Execution Trace:
+            </div>
+            <div id="demo-steps-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+
+          <!-- Audit Links & Navigation -->
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted);" id="demo-audit-count-label">
+              Audit events committed to immutable causality ledger.
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary btn-sm" onclick="switchView('audit'); closeDemoModal();">
+                📜 Inspect in Audit Trail
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="switchView('opportunities'); closeDemoModal();">
+                🎯 View in Opportunities
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="closeDemoModal()">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1859,20 +2173,23 @@
         }
 
         tbody.innerHTML = actions.map(a => {
+          const actionId = a.action_id || a.id || '';
+          const displayId = actionId ? actionId.slice(0, 8) : 'ACT-???';
           const sBadge = a.status === 'SUCCESS' ? 'badge-success' : (a.status === 'PENDING' ? 'badge-warning' : 'badge-danger');
           const ref = a.result?.id || a.result?.short_url || 'Autonomous Execution';
           const isPending = a.status === 'PENDING';
+          const actionType = a.action_type ? a.action_type.replace(/_/g, ' ').toUpperCase() : 'UNKNOWN';
           return `
             <tr>
-              <td class="mono">${a.id.slice(0, 8)}</td>
-              <td><strong>${a.action_type.replace(/_/g, ' ').toUpperCase()}</strong></td>
+              <td class="mono">${displayId}</td>
+              <td><strong>${actionType}</strong></td>
               <td class="mono">₹${a.amount ? parseFloat(a.amount).toLocaleString('en-IN') : '0.00'}</td>
-              <td><span class="badge badge-info">${a.provider}</span></td>
+              <td><span class="badge badge-info">${a.provider || 'mock'}</span></td>
               <td><span class="badge ${sBadge}">${a.status}</span></td>
               <td style="font-size: 0.75rem; color: var(--text-muted);">Policy Pass: Low-Risk</td>
               <td style="font-family: monospace; font-size: 0.75rem;">${ref}</td>
               <td>
-                ${isPending ? `<button class="btn btn-primary btn-sm" onclick="approveAction('${a.id}')">Approve</button>` : `<span style="color: var(--success);">✓ Completed</span>`}
+                ${isPending ? `<button class="btn btn-primary btn-sm" onclick="approveAction('${actionId}')">Approve</button>` : `<span style="color: var(--success);">✓ Completed</span>`}
               </td>
             </tr>
           `;
@@ -1908,7 +2225,12 @@
         });
         if (!res.ok) throw new Error('Demo failed');
         const data = await res.json();
-        alert(`Demo Succeeded!\n\n1. Primary Action: ${data.failed_action.action_type} (Status: ${data.failed_action.status})\n2. Fallback Action: ${data.fallback_action.action_type} (Status: ${data.fallback_action.status})\n3. Message: ${data.message}`);
+        const failedType = data.stage_1_initial_action?.action_type || data.failed_action?.action_type || 'create_payment_link';
+        const failedStatus = data.stage_1_initial_action?.status || data.failed_action?.status || 'FAILED';
+        const fallbackType = data.stage_4_alternative_action?.action_type || data.fallback_action?.action_type || 'recommend_alternative_payment';
+        const fallbackStatus = data.stage_4_alternative_action?.status || data.fallback_action?.status || 'SUCCESS';
+        const msg = data.stage_3_graceful_handling || data.message || 'Alternative recovery route executed successfully.';
+        alert(`Demo Succeeded!\n\n1. Primary Action: ${failedType} (Status: ${failedStatus})\n2. Fallback Action: ${fallbackType} (Status: ${fallbackStatus})\n3. Resolution: ${msg}`);
         loadRecoveryActions();
         loadOverview();
       } catch (err) {
@@ -2016,6 +2338,150 @@
         initMerchants();
       } catch (err) {
         alert(err.message);
+      }
+    }
+
+    // =========================================================================
+    // DEMO SCENARIO ENGINE FRONTEND CONTROLLER
+    // =========================================================================
+    let selectedDemoScenarioId = 'payment_degradation';
+    const demoCatalog = {
+      'payment_degradation': {
+        title: 'Scenario 1: Payment Degradation Anomaly',
+        desc: 'Detect anomaly → Bank/method/time cluster (HDFC UPI Android 18:00-22:00) → Calculate RAR → Safe recovery → Show recovered revenue.'
+      },
+      'checkout_abandonment': {
+        title: 'Scenario 2: High-Value Checkout Abandonment',
+        desc: 'Detect high-value carts (≥ ₹15,000) → ML recovery probability → Prioritize → 1-click link → Simulate payment → Update ROI.'
+      },
+      'subscription_failures': {
+        title: 'Scenario 3: Subscription Mandate Failure Spike',
+        desc: 'Detect failure spike → Identify delinquent subscriptions → Estimate recoverability → Trigger safe recovery workflow → Show preserved MRR.'
+      },
+      'recovery_failure': {
+        title: 'Scenario 4: Recovery Failure & Graceful Fallback',
+        desc: 'Primary recovery action fails (gateway timeout) → Forensic diagnosis → Alternative bounded action → Execute → Succeed.'
+      },
+      'unsafe_action': {
+        title: 'Scenario 5: Unsafe Action & Deterministic Policy Block',
+        desc: 'High-value (₹1,25,000) low-confidence (35%) candidate → AI recommends action → Policy blocks automatic execution → Merchant approval required.'
+      }
+    };
+
+    function openDemoModal() {
+      document.getElementById('demo-scenario-modal').classList.add('open');
+    }
+
+    function closeDemoModal() {
+      document.getElementById('demo-scenario-modal').classList.remove('open');
+    }
+
+    function selectDemoScenario(scenarioId) {
+      selectedDemoScenarioId = scenarioId;
+      document.querySelectorAll('.scenario-card').forEach(card => card.classList.remove('active'));
+      const activeCard = document.getElementById(`card-${scenarioId}`);
+      if (activeCard) activeCard.classList.add('active');
+
+      const meta = demoCatalog[scenarioId];
+      if (meta) {
+        document.getElementById('demo-selected-title').textContent = meta.title;
+        document.getElementById('demo-selected-desc').textContent = meta.desc;
+      }
+    }
+
+    async function runSelectedDemoScenario() {
+      const btn = document.getElementById('demo-run-btn');
+      const resultsContainer = document.getElementById('demo-results-container');
+      const stepsList = document.getElementById('demo-steps-list');
+      const safetyBox = document.getElementById('demo-safety-verified-box');
+      const metricsBox = document.getElementById('demo-metrics-badges');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Executing Scenario...';
+
+      resultsContainer.style.display = 'flex';
+      safetyBox.style.display = 'none';
+      stepsList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 12px;">Triggering end-to-end scenario pipeline with live DB entities...</div>';
+
+      try {
+        const res = await fetch(`/api/v1/demo/scenarios/run/${selectedDemoScenarioId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'Scenario execution failed');
+        }
+        const data = await res.json();
+
+        // Update Top Banner
+        const statusEl = document.getElementById('demo-run-status');
+        statusEl.textContent = `STATUS: ${data.status}`;
+        statusEl.style.color = data.status === 'SUCCESS' ? 'var(--success)' : '#f87171';
+        document.getElementById('demo-run-summary').textContent = data.final_summary;
+
+        // Render Key Metrics
+        metricsBox.innerHTML = '';
+        if (data.key_metrics) {
+          for (const [k, v] of Object.entries(data.key_metrics)) {
+            const formattedVal = typeof v === 'number' && v > 100 ? `₹${v.toLocaleString('en-IN')}` : v;
+            const badge = document.createElement('div');
+            badge.className = 'badge badge-info';
+            badge.style.fontSize = '0.75rem';
+            badge.textContent = `${k.replace(/_/g, ' ')}: ${formattedVal}`;
+            metricsBox.appendChild(badge);
+          }
+        }
+
+        // Show Safety Proof Box for Scenario 5
+        if (data.scenario_id === 'unsafe_action' && data.safety_system_proven) {
+          safetyBox.style.display = 'flex';
+        }
+
+        // Render Steps List
+        stepsList.innerHTML = (data.steps || []).map(step => {
+          let badgeClass = 'badge-success';
+          if (step.status === 'failed') badgeClass = 'badge-danger';
+          else if (step.status === 'blocked' || step.status === 'safety_enforced') badgeClass = 'badge-warning';
+          else if (step.status === 'pending_approval') badgeClass = 'badge-info';
+
+          const evidenceJson = step.evidence ? JSON.stringify(step.evidence, null, 2) : '';
+
+          return `
+            <div class="demo-step-row">
+              <div class="demo-step-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="demo-step-num">${step.step_number}</div>
+                  <strong style="color: #fff; font-size: 0.9rem;">${step.title}</strong>
+                </div>
+                <span class="badge ${badgeClass}">${step.status.toUpperCase()}</span>
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+                ${step.summary}
+              </div>
+              ${evidenceJson ? `
+                <details style="margin-top: 4px;">
+                  <summary style="font-size: 0.72rem; color: var(--info); cursor: pointer; user-select: none;">
+                    🔍 Forensic Evidence & Telemetry JSON
+                  </summary>
+                  <pre style="background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 6px; font-size: 0.72rem; color: #a7f3d0; overflow-x: auto; margin-top: 6px;" class="mono">${evidenceJson}</pre>
+                </details>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('demo-audit-count-label').textContent =
+          `✓ ${data.audit_event_ids?.length || 0} immutable audit records generated in causality ledger. Merchant: ${data.merchant_name}`;
+
+        // Refresh underlying dashboard data in background so charts/tables reflect newly created events
+        refreshCurrentView();
+
+      } catch (err) {
+        stepsList.innerHTML = `<div style="color: var(--danger); font-size: 0.85rem; padding: 12px;">Error executing scenario: ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '⚡ Run Scenario Now';
       }
     }
 

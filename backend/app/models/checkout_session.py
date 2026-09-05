@@ -1,10 +1,14 @@
 import uuid
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy import String, Numeric, ForeignKey, Index, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
 from app.models.enums import CheckoutSessionStatus
+
+if TYPE_CHECKING:
+    from app.models.merchant import Merchant
+    from app.models.customer import Customer
 
 class CheckoutSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "checkout_sessions"

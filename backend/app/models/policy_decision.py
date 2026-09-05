@@ -1,9 +1,14 @@
 import uuid
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy import String, Text, Numeric, Integer, Boolean, ForeignKey, Index, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.agent_decision import AgentDecision
+    from app.models.recovery_opportunity import RecoveryOpportunity
+    from app.models.recovery_action import RecoveryAction
 
 class PolicyDecision(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "policy_decisions"

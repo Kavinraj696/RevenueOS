@@ -1,11 +1,17 @@
 import uuid
 from decimal import Decimal
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy import String, Text, Numeric, JSON, DateTime, ForeignKey, Index, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
 from app.models.enums import ActionType, ActionStatus
+
+if TYPE_CHECKING:
+    from app.models.recovery_opportunity import RecoveryOpportunity
+    from app.models.policy_decision import PolicyDecision
+    from app.models.agent_decision import AgentDecision
+    from app.models.audit_event import AuditEvent
 
 class RecoveryAction(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "recovery_actions"

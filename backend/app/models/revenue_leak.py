@@ -1,11 +1,15 @@
 import uuid
 from decimal import Decimal
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from sqlalchemy import String, Integer, Numeric, Text, JSON, DateTime, ForeignKey, Index, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
 from app.models.enums import LeakType
+
+if TYPE_CHECKING:
+    from app.models.merchant import Merchant
+    from app.models.recovery_opportunity import RecoveryOpportunity
 
 class RevenueLeak(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "revenue_leaks"

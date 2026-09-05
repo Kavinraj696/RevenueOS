@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
 from app.api.deps import get_db
+from app.security import detect_prompt_injection, sanitize_user_input
 from app.models.merchant import Merchant
 from app.models.payment import Payment
 from app.models.payment_attempt import PaymentAttempt
@@ -59,7 +60,37 @@ def agent_chat_investigation(
     Conversational AI operations query endpoint for merchant executives and operators.
     Provides concise decision explanations and structured evidence cards backed by real database telemetry.
     No hidden chain-of-thought is exposed.
+    Prompt injection attacks are detected and blocked before any processing.
     """
+    # -----------------------------------------------------------------------
+    # SECURITY: Prompt injection / policy bypass detection
+    # -----------------------------------------------------------------------
+    sanitized_message = sanitize_user_input(req.message or "", max_length=2000)
+    if detect_prompt_injection(sanitized_message):
+        return AgentChatResponse(
+            merchant_id=req.merchant_id,
+            query=req.message,
+            response_text=(
+                "⚠️ Security Alert: Your message was flagged as a potential prompt injection attempt. "
+                "RevenueOS does not allow override instructions, policy bypass requests, or direct financial "
+                "action commands through the chat interface.\n\n"
+                "All financial actions are governed by the FinancialActionPolicyEngine and require "
+                "deterministic policy validation. This incident has been logged."
+            ),
+            decision_explanation="BLOCKED: Prompt injection attempt detected by security layer.",
+            evidence_cards=[],
+            recommended_actions=[
+                "Review policy audit logs for security alerts",
+                "Execute actions via authorized Policy Engine pathways only"
+            ],
+            suggested_queries=[
+                "Why did revenue drop yesterday?",
+                "Which bank has the highest failure rate right now?",
+                "What is our expected recoverable revenue this week?"
+            ],
+            timestamp=datetime.now(timezone.utc),
+        )
+
     merchant = db.query(Merchant).filter(Merchant.id == req.merchant_id).first()
     if not merchant:
         merchant = db.query(Merchant).first()
@@ -67,7 +98,7 @@ def agent_chat_investigation(
             raise HTTPException(status_code=404, detail="Merchant not found")
 
     m_id = merchant.id
-    query_lower = req.message.lower().strip()
+    query_lower = sanitized_message.lower().strip()
     now_utc = datetime.now(timezone.utc)
 
     # 1. Fetch real merchant telemetry

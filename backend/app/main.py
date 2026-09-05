@@ -1,12 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.config import settings
 from app.db.base import Base
-from app.db.session import engine, SessionLocal
+from app.db.session import engine, SessionLocal, get_db
 from app.models.merchant import Merchant
 from app.synthetic.generator import SyntheticDataGenerator
 
@@ -25,7 +27,11 @@ from app.api.v1.providers import router as providers_router
 from app.api.v1.recovery import router as recovery_router
 from app.api.v1.audit import router as audit_router, serve_audit_ui
 from app.api.v1.analytics import router as analytics_router
+from app.api.v1.evaluation import router as evaluation_router
+from app.api.v1.security_audit import router as security_router
 from pathlib import Path
+
+
 
 DASHBOARD_HTML_PATH = Path(__file__).resolve().parent / "static" / "dashboard.html"
 
@@ -77,11 +83,27 @@ app.add_middleware(
 # Health checks
 @app.get("/health", tags=["Health"])
 @app.get(f"{settings.API_V1_STR}/health", tags=["Health"])
-def health_check():
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "service": settings.PROJECT_NAME,
+                "environment": "development" if settings.DEBUG else "production",
+                "database": "disconnected",
+                "error": "Database connectivity check failed"
+            }
+        )
     return {
         "status": "healthy",
         "service": settings.PROJECT_NAME,
-        "environment": "development" if settings.DEBUG else "production"
+        "environment": "development" if settings.DEBUG else "production",
+        "database": db_status
     }
 
 # Register API routers
@@ -116,9 +138,13 @@ app.add_api_route("/", serve_dashboard, methods=["GET"], response_class=HTMLResp
 app.add_api_route("/dashboard", serve_dashboard, methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
 app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics & ROI"])
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["Analytics & ROI"])
+app.include_router(evaluation_router, prefix="/api/evaluation", tags=["Evaluation Framework"])
+app.include_router(evaluation_router, prefix=f"{settings.API_V1_STR}/evaluation", tags=["Evaluation Framework"])
+app.include_router(security_router, prefix="/api/security", tags=["Security Audit"])
+app.include_router(security_router, prefix=f"{settings.API_V1_STR}/security", tags=["Security Audit"])
+
 app.include_router(merchants_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Merchants"])
 app.include_router(transactions_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Transactions & Failures"])
 app.include_router(subscriptions_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Subscriptions"])
 app.include_router(checkout_sessions_router, prefix=f"{settings.API_V1_STR}/merchants", tags=["Checkout Sessions"])
 app.include_router(demo_router, prefix=f"{settings.API_V1_STR}/demo", tags=["Demo Management"])
-
